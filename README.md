@@ -257,16 +257,15 @@ For technical support and maintenance inquiries:
 msalman@bccrc.ca · m.salmanpoor66@gmail.com · m.salmanpour@ubc.ca
 
 **Sirwan Barichin**  
-sirwanbarichin@gmail.com
 
 ---
 
 ## Authors
 
 - **Dr. Mohammad R. Salmanpour** (Team Lead, Fund Provider, Evaluator, Medical Imaging Expert, Backend, Refactoring, Debugging, Library Management, IBSI Standardization, Slicer GUI) – msalman@bccrc.ca, m.salmanpoor66@gmail.com, m.salmanpour@ubc.ca  
-- **Sirwan Barichin** (IBSI Standardization, Debugging, Activation of PySERA Library, Slicer GUI) – sirwanbarichin@gmail.com  
-- **Dr. Mehrdad Oveisi** (Evaluator, Software Engineer, Advisor) – moveisi@cs.ubc.ca  
-- **Dr. Arman Rahmim** (Fund Provider, Medical Imaging Expert, Evaluator, Advisor) – arman.rahmim@ubc.ca, arahmm@bccrc.ca
+- **Sirwan Barichin** (IBSI Standardization, Debugging, Activation of PySERA Library, Slicer GUI) 
+- **Dr. Mehrdad Oveisi** (Evaluator, Software Engineer, Advisor) 
+- **Dr. Arman Rahmim** (Fund Provider, Medical Imaging Expert, Evaluator, Advisor)
 
 ---
 
@@ -317,6 +316,7 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
 
