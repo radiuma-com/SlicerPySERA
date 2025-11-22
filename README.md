@@ -282,7 +282,6 @@ If you use this extension or PySERA in your research, please cite both:
       primaryClass={physics.med-ph},
       url={https://arxiv.org/abs/2511.15963}, 
 }
-```
 
 ---
 
@@ -316,6 +315,7 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
 
