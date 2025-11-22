@@ -282,11 +282,14 @@ If you use this extension or PySERA in your research, please cite both:
   url       = {https://github.com/MohammadRSalmanpour/SlicerPySERA}
 }
 
-@software{pysera2025,
-  title     = {PySERA: A Simple Python Library for Radiomics Feature Extraction},
-  author    = {PySERA Team},
-  year      = {2025},
-  url       = {https://github.com/MohammadRSalmanpour/PySERA}
+@misc{salmanpour2025pyseraopensourcestandardizedpython,
+      title={PySERA: Open-Source Standardized Python Library for Automated, Scalable, and Reproducible Handcrafted and Deep Radiomics}, 
+      author={Mohammad R. Salmanpour and Amir Hossein Pouria and Sirwan Barichin and Yasaman Salehi and Sonya Falahati and Isaac Shiri and Mehrdad Oveisi and Arman Rahmim},
+      year={2025},
+      eprint={2511.15963},
+      archivePrefix={arXiv},
+      primaryClass={physics.med-ph},
+      url={https://arxiv.org/abs/2511.15963}, 
 }
 ```
 
@@ -322,5 +325,6 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
