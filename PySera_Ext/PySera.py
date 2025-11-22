@@ -93,7 +93,7 @@ class PySera(ScriptedLoadableModule):
         self.parent.title = "PySera"
         self.parent.categories = ["Radiomics"]
         self.parent.dependencies = []
-        self.parent.contributors = ["Your Name"]
+        self.parent.contributors = ["Mohammad R. Salmanpour"]
         self.parent.helpText = "YAML-driven PySERA feature extraction."
         self.parent.acknowledgementText = "Thanks to ..."
 
@@ -861,3 +861,4 @@ class PySeraTest(ScriptedLoadableModuleTest):
         except Exception as e:
             self.delayDisplay(f"Test failed: {e}")
             logger.error(f"PySeraTest failed: {e}")
+
