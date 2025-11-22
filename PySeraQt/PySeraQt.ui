@@ -1,6 +1,6 @@
 <!-- SlicerPySera/PySeraQt/PySeraQt.ui -->
 <?xml version="1.0" encoding="UTF-8"?>
-<ui version="4.0">
+<ui version="1.0">
  <class>PySeraQtWidget</class>
  <widget class="QWidget" name="PySeraQtWidget">
   <property name="windowTitle">
@@ -15,3 +15,4 @@
   </layout>
  </widget>
 </ui>
+
