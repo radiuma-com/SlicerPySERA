@@ -6,7 +6,7 @@ set(MODULE_PYTHON_SCRIPTS
   )
 
 set(MODULE_PYTHON_RESOURCES
-  Resources/Icons/PySERA.png
+  Resources/Icons/SlicerPySERA_png_icon.png
   PySeraQt.ui
   )
 
@@ -15,3 +15,4 @@ slicerMacroBuildScriptedModule(
   SCRIPTS ${MODULE_PYTHON_SCRIPTS}
   RESOURCES ${MODULE_PYTHON_RESOURCES}
 )
+
