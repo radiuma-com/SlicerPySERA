@@ -306,7 +306,7 @@ See [LICENSE](LICENSE) for details.
 Supported by:
 - **[Quantitative Radiomolecular Imaging and Therapy (Qurit) Lab](https://www.qurit.ca/)**, UBC, Canada  
 - **[BC Cancer Research Institute](https://www.bccrc.ca/)**, Vancouver, Canada  
-- **[Virtual Collaboration (VirCollab) Group](https://www.vircollab.com/)**, Canada  
+- **[Virtual Collaboration (VirCollab) Group](https://vircollab.com/)**, Canada  
 - **[Technological Virtual Collaboration Corporation (TECVICO Corp.)](https://www.tecvico.com/)**, Canada  
 
 Funding provided by the **Natural Sciences and Engineering Research Council of Canada (NSERC)** —  
@@ -316,6 +316,7 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
 
