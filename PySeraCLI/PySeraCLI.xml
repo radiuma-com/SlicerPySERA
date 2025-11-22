@@ -1,0 +1,34 @@
+<!-- SlicerPySera/PySeraCLI/PySeraCLI.xml -->
+<executable>
+  <category>Radiomics</category>
+  <title>PySera CLI</title>
+  <description>Run pysera radiomics extraction (CLI wrapper)</description>
+
+  <inputs>
+    <label>Input</label>
+    <item>
+      <name>image</name>
+      <longflag>--image</longflag>
+      <type>file</type>
+      <description>Input image (NIfTI)</description>
+      <label>Image</label>
+    </item>
+    <item>
+      <name>mask</name>
+      <longflag>--mask</longflag>
+      <type>file</type>
+      <description>Input mask (NIfTI)</description>
+      <label>Mask</label>
+    </item>
+  </inputs>
+
+  <outputs>
+    <label>Output</label>
+    <item>
+      <name>out</name>
+      <type>file</type>
+      <longflag>--out</longflag>
+      <description>Output CSV</description>
+    </item>
+  </outputs>
+</executable>

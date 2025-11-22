@@ -1,0 +1,17 @@
+<!-- SlicerPySera/PySeraQt/PySeraQt.ui -->
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PySeraQtWidget</class>
+ <widget class="QWidget" name="PySeraQtWidget">
+  <property name="windowTitle">
+   <string>PySera</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+      <widget class="QLabel" name="label">
+        <property name="text"><string>PySera - Radiomics</string></property>
+      </widget>
+    </item>
+  </layout>
+ </widget>
+</ui>
