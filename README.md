@@ -271,7 +271,7 @@ msalman@bccrc.ca · m.salmanpoor66@gmail.com · m.salmanpour@ubc.ca
 
 ## Citation
 
-If you use this extension or PySERA in your research, please cite both:
+If you use this extension or PySERA in your research, please cite the following paper:
 
 ```bash
 @misc{salmanpour2025pyseraopensourcestandardizedpython,
@@ -316,6 +316,7 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
 
