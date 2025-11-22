@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-stable-green.svg)](#version-history)
 
-**SlicerPySERA** integrates the [**PySERA**](https://github.com/MohammadRSalmanpour/PySERA) radiomics engine into **3D Slicer** as an interactive extension.  
+**SlicerPySERA** integrates the [**PySERA**](https://github.com/radiuma-com/PySERA) radiomics engine into **3D Slicer** as an interactive extension.  
 It enables reproducible, IBSI-compliant handcrafted radiomics as well as deep feature extraction directly within the Slicer environment.
 
 ---
@@ -37,7 +37,7 @@ It enables reproducible, IBSI-compliant handcrafted radiomics as well as deep fe
 
 SlicerPySERA provides a graphical interface for configuring and running radiomics pipelines on medical images and segmentations within **3D Slicer**. It exposes all relevant IBSI (Image Biomarker Standardisation Initiative)-aligned preprocessing and feature extraction settings directly through the GUI.
 
-It leverages the [PySERA library](https://github.com/MohammadRSalmanpour/PySERA) for computation, ensuring standardized, reproducible, and validated radiomics results.
+It leverages the [PySERA library](https://github.com/radiuma-com/PySERA) for computation, ensuring standardized, reproducible, and validated radiomics results.
 
 **Key capabilities:**
 - IBSI-compliant handcrafted radiomics and deep features  
@@ -123,7 +123,7 @@ All images are located in `Resources/Screenshots/`.
    - Alternatively: install `pysera` into Slicer’s Python interpreter.  
 4. After restarting, **PySERA** appears under the *Radiomics* module category.
 
-> **Note:** The [PySERA library](https://github.com/MohammadRSalmanpour/PySERA) can also be used independently in Python.
+> **Note:** The [PySERA library](https://github.com/radiuma-com/PySERA) can also be used independently in Python.
 
 ---
 
@@ -301,9 +301,9 @@ See [LICENSE](LICENSE) for details.
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/MohammadRSalmanpour/SlicerPySERA/issues)  
+- Issues: [GitHub Issues](https://github.com/radiuma-com/SlicerPySERA/issues)  
 - Documentation: This README and module help  
-- Examples: See [PySERA Examples](https://github.com/MohammadRSalmanpour/PySERA/tree/main/examples)
+- Examples: See [PySERA Examples](https://github.com/radiuma-com/PySERA/tree/main/examples)
 
 ---
 
@@ -321,4 +321,5 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 ---
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
-The [**PySERA core library**](https://github.com/MohammadRSalmanpour/PySERA) is maintained separately for standalone Python usage.
+The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
