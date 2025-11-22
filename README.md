@@ -273,6 +273,7 @@ msalman@bccrc.ca · m.salmanpoor66@gmail.com · m.salmanpour@ubc.ca
 
 If you use this extension or PySERA in your research, please cite both:
 
+```bash
 @misc{salmanpour2025pyseraopensourcestandardizedpython,
       title={PySERA: Open-Source Standardized Python Library for Automated, Scalable, and Reproducible Handcrafted and Deep Radiomics}, 
       author={Mohammad R. Salmanpour and Amir Hossein Pouria and Sirwan Barichin and Yasaman Salehi and Sonya Falahati and Isaac Shiri and Mehrdad Oveisi and Arman Rahmim},
@@ -282,7 +283,7 @@ If you use this extension or PySERA in your research, please cite both:
       primaryClass={physics.med-ph},
       url={https://arxiv.org/abs/2511.15963}, 
 }
-
+```
 ---
 
 ## License
@@ -315,6 +316,7 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
 
