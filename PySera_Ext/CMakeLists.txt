@@ -1,4 +1,4 @@
-# SlicerPySera/PySera/CMakeLists.txt
+# SlicerPySera/PySera_Ext/CMakeLists.txt
 set(MODULE_NAME PySera)
 
 set(MODULE_PYTHON_SCRIPTS
@@ -14,3 +14,4 @@ slicerMacroBuildScriptedModule(
   SCRIPTS ${MODULE_PYTHON_SCRIPTS}
   RESOURCES ${MODULE_PYTHON_RESOURCES}
 )
+
