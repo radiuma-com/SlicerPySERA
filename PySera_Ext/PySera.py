@@ -91,7 +91,7 @@ class PySera(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = "PySera"
-        self.parent.categories = ["Radiomics"]
+        self.parent.categories = ["Analysis"]
         self.parent.dependencies = []
         self.parent.contributors = ["Mohammad R. Salmanpour"]
         self.parent.helpText = "YAML-driven PySERA feature extraction."
@@ -861,4 +861,5 @@ class PySeraTest(ScriptedLoadableModuleTest):
         except Exception as e:
             self.delayDisplay(f"Test failed: {e}")
             logger.error(f"PySeraTest failed: {e}")
+
 
