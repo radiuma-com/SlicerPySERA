@@ -32,7 +32,7 @@ import logging
 # Logger Helper
 # -------------------------------
 class Logger:
-    def __init__(self, name="PySera"):
+    def __init__(self, name="PySERA"):
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.DEBUG)
         if not self.logger.handlers:
@@ -90,7 +90,7 @@ CLI_MAP  = CFG_FILE.get("cli_key_map") or {}   # mapping block
 class PySera(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "PySera"
+        self.parent.title = "PySERA"
         self.parent.categories = ["Analysis"]
         self.parent.dependencies = []
         self.parent.contributors = ["Mohammad R. Salmanpour"]
@@ -861,5 +861,6 @@ class PySeraTest(ScriptedLoadableModuleTest):
         except Exception as e:
             self.delayDisplay(f"Test failed: {e}")
             logger.error(f"PySeraTest failed: {e}")
+
 
 
