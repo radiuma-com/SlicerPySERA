@@ -49,12 +49,14 @@ It leverages the [PySERA library](https://github.com/radiuma-com/PySERA) for com
 
 ## Repository Structure
 
-- **pysera/** – The main PySERA library for radiomics computations, usable independently of Slicer.  
-- **PySera/** – The main 3D Slicer module, including ScriptedLoadableModule, UI code, and integration with `pysera`.  
-- **PySeraCLI/** – Optional command-line interface for headless use.  
-- **PySeraQt/** – Optional standalone Qt-based GUI.  
+- **PySera_Ext/** – Main 3D Slicer ScriptedLoadableModule (GUI). Includes vendored parameter files under `pysera_lib/`.
+- **PySeraCLI/** – Optional CLI wrapper for headless runs. Includes vendored parameter files under `pysera_cli_lib/`.
+- **PySeraQt/** – Disabled for Extension Index packaging (redundant wrapper and resource issues). Can be re-enabled after fixing resources.
+- **Resources/** – Assets such as screenshots and icons used by the extension entry pages. 
 - **Data/** – Example datasets for testing and development purposes.  
 - **Resources/** – All non-code assets, including GUI icons, screenshots, configuration files, and templates for reports.  
+
+> Note: The core `pysera` library is installed into Slicer’s Python using `slicer.util.pip_install("pysera")` at runtime.
 
 ---
 
