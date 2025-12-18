@@ -64,7 +64,6 @@ MODULE_DIR = os.path.dirname(__file__)
 def _find_pysera_lib_dir():
     """
     Locate pysera_lib directory.
-
     Your project layout:
       <ExtensionRoot>/pysera_lib/parameters.yaml|json
       <ExtensionRoot>/PySera_Ext/PySera.py
@@ -344,29 +343,36 @@ class PySERALogic(ScriptedLoadableModuleLogic):
         if fx is None:
             return []
 
-        # DataFrame-like: [1 rows x N columns] -> N rows x 2 columns
+        # ------------------------------------------------------------
+        # ✅ Case 0: DataFrame-like (what you have: [1 rows x 81 columns])
+        # Duck-typing: do NOT import pandas, just detect common attrs.
+        # ------------------------------------------------------------
         try:
             has_shape = hasattr(fx, "shape")
             has_columns = hasattr(fx, "columns")
             has_to_dict = hasattr(fx, "to_dict") and callable(getattr(fx, "to_dict"))
             if has_shape and has_columns and has_to_dict:
+                # Prefer orient='records' if supported
                 row_dict = None
                 try:
-                    recs = fx.to_dict(orient="records")
+                    recs = fx.to_dict(orient="records")  # pandas DataFrame supports this
                     if recs and isinstance(recs[0], dict):
                         row_dict = recs[0]
                 except Exception:
                     row_dict = None
 
+                # Fallback: use iloc[0].to_dict()
                 if row_dict is None and hasattr(fx, "iloc"):
                     try:
                         row_dict = fx.iloc[0].to_dict()
                     except Exception:
                         row_dict = None
 
+                # Final fallback: plain to_dict (might be column->dict(index->value))
                 if row_dict is None:
                     try:
                         col_map = fx.to_dict()
+                        # pick first index value for each column
                         row_dict = {}
                         for k, v in col_map.items():
                             if isinstance(v, dict) and v:
@@ -377,6 +383,7 @@ class PySERALogic(ScriptedLoadableModuleLogic):
                         row_dict = None
 
                 if isinstance(row_dict, dict) and row_dict:
+                    # Keep column order if possible
                     try:
                         cols = list(fx.columns)
                         return [[str(c), row_dict.get(c)] for c in cols]
@@ -386,7 +393,7 @@ class PySERALogic(ScriptedLoadableModuleLogic):
         except Exception:
             pass
 
-        # dict {feature: value}
+        # Case A: dict {feature: value}
         if isinstance(fx, dict):
             keys = list(fx.keys())
             try:
@@ -395,14 +402,15 @@ class PySERALogic(ScriptedLoadableModuleLogic):
                 pass
             return [[str(k), fx[k]] for k in keys]
 
-        # list formats
+        # Case B: list formats
         if isinstance(fx, list):
+            # 2×N (names row + values row) -> transpose
             if (
-                len(fx) == 2
-                and isinstance(fx[0], (list, tuple))
-                and isinstance(fx[1], (list, tuple))
-                and len(fx[0]) == len(fx[1])
-                and len(fx[0]) > 0
+                    len(fx) == 2
+                    and isinstance(fx[0], (list, tuple))
+                    and isinstance(fx[1], (list, tuple))
+                    and len(fx[0]) == len(fx[1])
+                    and len(fx[0]) > 0
             ):
                 names = fx[0]
                 values = fx[1]
@@ -420,7 +428,7 @@ class PySERALogic(ScriptedLoadableModuleLogic):
                             rows.append([str(k), v])
             return rows
 
-        # string (maybe JSON dict)
+        # Case C: string (maybe JSON dict)
         if isinstance(fx, str):
             s = fx.strip()
             try:
@@ -479,6 +487,8 @@ class PySERALogic(ScriptedLoadableModuleLogic):
             **cli_kwargs,
         )
 
+        # IMPORTANT: do not block or fail UI on CSV readiness.
+        # The UI will show extracted features from result['features_extracted'].
         logger.info(f"Feature extraction completed: {output_csv}")
         return output_csv, result
 
@@ -550,111 +560,6 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         grid.addWidget(w1, row, 1)
         grid.addWidget(lbl2, row, 2)
         grid.addWidget(w2, row, 3)
-
-    def _apply_two_column_widths(self, table, value_width=160, feature_max_width=420):
-        """
-        Column 0 (Feature/Parameter): ResizeToContents but capped (no endless stretching)
-        Column 1 (Value): Fixed and small
-        """
-        table.setWordWrap(False)
-        try:
-            table.setTextElideMode(qt.Qt.ElideRight)
-        except Exception:
-            pass
-
-        header = table.horizontalHeader()
-        try:
-            header.setStretchLastSection(False)
-            header.setSectionResizeMode(0, qt.QHeaderView.ResizeToContents)
-            header.setSectionResizeMode(1, qt.QHeaderView.Fixed)
-        except Exception:
-            # older Qt fallback
-            try:
-                header.setResizeMode(0, qt.QHeaderView.ResizeToContents)
-                header.setResizeMode(1, qt.QHeaderView.Fixed)
-            except Exception:
-                pass
-
-        # Value column fixed
-        table.setColumnWidth(1, int(value_width))
-
-        # Let Qt compute Feature width, then cap it
-        table.resizeColumnToContents(0)
-        w = table.columnWidth(0)
-        if w > int(feature_max_width):
-            table.setColumnWidth(0, int(feature_max_width))
-
-    @staticmethod
-    def _make_item(text, tooltip=None, align_right=False):
-        it = qt.QTableWidgetItem("" if text is None else str(text))
-        if tooltip is not None:
-            it.setToolTip(str(tooltip))
-        if align_right:
-            it.setTextAlignment(int(qt.Qt.AlignVCenter | qt.Qt.AlignRight))
-        else:
-            it.setTextAlignment(int(qt.Qt.AlignVCenter | qt.Qt.AlignLeft))
-        return it
-
-    @staticmethod
-    def _shorten_for_cell(value, max_len=120):
-        s = "" if value is None else str(value)
-        if len(s) <= max_len:
-            return s, s
-        return s[:max_len - 1] + "…", s
-
-    def _fill_extracted_features_table(self, rows):
-        self.featureTable.clear()
-        self.featureTable.setRowCount(0)
-        self.featureTable.setColumnCount(2)
-        self.featureTable.setHorizontalHeaderLabels(["Feature", "Value"])
-
-        for feat, val in rows:
-            r = self.featureTable.rowCount
-            self.featureTable.insertRow(r)
-
-            feat_txt, feat_tip = self._shorten_for_cell(feat, max_len=200)
-            val_txt, val_tip = self._shorten_for_cell(val, max_len=200)
-
-            self.featureTable.setItem(r, 0, self._make_item(feat_txt, tooltip=feat_tip, align_right=False))
-            self.featureTable.setItem(r, 1, self._make_item(val_txt, tooltip=val_tip, align_right=True))
-
-        self._apply_two_column_widths(self.featureTable, left_min=300, right_width=160)
-
-    def _poll_csv_until_ready(self, output_csv, tries=160, interval_ms=250):
-        """
-        Fallback only: if result['features_extracted'] is not parseable.
-        This is async and DOES NOT return rows.
-        """
-        self._csvPollRemaining = tries
-
-        def _tick():
-            self._csvPollRemaining -= 1
-            try:
-                rows = self.logic.load_features_as_feature_value_rows(output_csv)
-                if rows:
-                    self._fill_extracted_features_table(rows)
-                    self.statusLabel.setText(f"Features loaded from: {output_csv}")
-                    self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
-                    print(f"[PySera] Done. Loaded features from CSV: {output_csv}")
-                    logger.info(f"Done. Loaded features from CSV: {output_csv}")
-                    return
-            except Exception:
-                pass
-
-            if self._csvPollRemaining > 0:
-                qt.QTimer.singleShot(interval_ms, _tick)
-            else:
-                self._fill_extracted_features_table([["Error", "Could not load features (CSV not ready/locked)"]])
-                self.statusLabel.setText("CSV was not ready in time.")
-                self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
-                print(f"[PySera] Failed to load CSV in time: {output_csv}")
-                logger.error(f"Failed to load CSV in time: {output_csv}")
-
-        self.statusLabel.setText("Waiting for output CSV to be finalized...")
-        self.statusLabel.setStyleSheet("color: blue; font-weight: bold;")
-        print(f"[PySera] Processing finished, waiting for CSV finalize: {output_csv}")
-        logger.info(f"Processing finished, waiting for CSV finalize: {output_csv}")
-        qt.QTimer.singleShot(interval_ms, _tick)
 
     def _build_categories_panel(self, options, default_str):
         gb = qt.QGroupBox("Categories")
@@ -798,6 +703,48 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         page_v.addWidget(scroll)
         tabs.addTab(page, title)
         return inner_v
+
+    def _fill_extracted_features_table(self, rows):
+        self.featureTable.clear()
+        self.featureTable.setRowCount(0)
+        self.featureTable.setColumnCount(2)
+        self.featureTable.setHorizontalHeaderLabels(["Feature", "Value"])
+        for feat, val in rows:
+            r = self.featureTable.rowCount
+            self.featureTable.insertRow(r)
+            self.featureTable.setItem(r, 0, qt.QTableWidgetItem("" if feat is None else str(feat)))
+            self.featureTable.setItem(r, 1, qt.QTableWidgetItem("" if val is None else str(val)))
+        self.featureTable.resizeColumnsToContents()
+
+    def _poll_csv_until_ready(self, output_csv, tries=160, interval_ms=250):
+        """
+        Fallback only: if result['features_extracted'] is not parseable.
+        This is async and DOES NOT return rows.
+        """
+        self._csvPollRemaining = tries
+
+        def _tick():
+            self._csvPollRemaining -= 1
+            try:
+                rows = self.logic.load_features_as_feature_value_rows(output_csv)
+                if rows:
+                    self._fill_extracted_features_table(rows)
+                    self.statusLabel.setText(f"Features loaded from: {output_csv}")
+                    self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
+                    return
+            except Exception:
+                pass
+
+            if self._csvPollRemaining > 0:
+                qt.QTimer.singleShot(interval_ms, _tick)
+            else:
+                self._fill_extracted_features_table([["Error", "Could not load features (CSV not ready/locked)"]])
+                self.statusLabel.setText("CSV was not ready in time.")
+                self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
+
+        self.statusLabel.setText("Waiting for output CSV to be finalized...")
+        self.statusLabel.setStyleSheet("color: blue; font-weight: bold;")
+        qt.QTimer.singleShot(interval_ms, _tick)
 
     def setup(self):
         super().setup()
@@ -1161,6 +1108,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         self.summaryTable = qt.QTableWidget()
         self.summaryTable.setColumnCount(2)
         self.summaryTable.setHorizontalHeaderLabels(["Parameter", "Value"])
+        self.summaryTable.horizontalHeader().setStretchLastSection(True)
         self.summaryTable.verticalHeader().setVisible(False)
         self.summaryTable.setEditTriggers(qt.QAbstractItemView.NoEditTriggers)
         self.summaryTable.setSelectionBehavior(qt.QAbstractItemView.SelectRows)
@@ -1168,12 +1116,12 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         self.summaryTable.setMaximumHeight(140)
         runLay.addWidget(qt.QLabel("Summary:"))
         runLay.addWidget(self.summaryTable)
-        self._apply_two_column_widths(self.summaryTable, left_min=260, right_width=220)
 
         # Extracted Features: EXACTLY two columns, read-only
         self.featureTable = qt.QTableWidget()
         self.featureTable.setColumnCount(2)
         self.featureTable.setHorizontalHeaderLabels(["Feature", "Value"])
+        self.featureTable.horizontalHeader().setStretchLastSection(True)
         self.featureTable.verticalHeader().setVisible(False)
         self.featureTable.setEditTriggers(qt.QAbstractItemView.NoEditTriggers)
         self.featureTable.setSelectionBehavior(qt.QAbstractItemView.SelectRows)
@@ -1182,7 +1130,6 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         self.featureTable.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         runLay.addWidget(qt.QLabel("Extracted Features:"))
         runLay.addWidget(self.featureTable, 1)
-        self._apply_two_column_widths(self.featureTable, left_min=320, right_width=160)
 
         runTab.addWidget(runGroup)
 
@@ -1230,28 +1177,21 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
             output_csv, result = self.logic.run_single_pair(image_path, mask_path, params)
             dt = time.time() - t0
 
+            self.statusLabel.setText(f"Features saved to: {output_csv}")
+            self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
+
             # Summary (always)
             self.summaryTable.setRowCount(0)
-
-            processed_files = (result.get("processed_files", "N/A") if isinstance(result, dict) else "N/A")
-            fx_summary = (result.get("features_extracted", "N/A") if isinstance(result, dict) else "N/A")
-
-            # shrink large values in display, keep full in tooltip
-            fx_disp, fx_tip = self._shorten_for_cell(fx_summary, max_len=140)
-
-            summary_data = [
-                ("output_path", output_csv, output_csv),
-                ("processed_files", processed_files, processed_files),
-                ("features_extracted", fx_disp, fx_tip),
-                ("processing_time (s)", round(dt, 3), round(dt, 3)),
-            ]
-
-            for i, (k, v_disp, v_tip) in enumerate(summary_data):
+            summary_data = {
+                "output_path": output_csv,
+                "processed_files": (result.get("processed_files", "N/A") if isinstance(result, dict) else "N/A"),
+                "features_extracted": (result.get("features_extracted", "N/A") if isinstance(result, dict) else "N/A"),
+                "processing_time (s)": round(dt, 3),
+            }
+            for i, (k, v) in enumerate(summary_data.items()):
                 self.summaryTable.insertRow(i)
-                self.summaryTable.setItem(i, 0, self._make_item(k, tooltip=k, align_right=False))
-                self.summaryTable.setItem(i, 1, self._make_item(v_disp, tooltip=v_tip, align_right=False))
-
-            self._apply_two_column_widths(self.summaryTable, left_min=260, right_width=220)
+                self.summaryTable.setItem(i, 0, qt.QTableWidgetItem(str(k)))
+                self.summaryTable.setItem(i, 1, qt.QTableWidgetItem(str(v)))
 
             # Extracted Features (PRIMARY: from result['features_extracted'])
             rows = self.logic.feature_rows_from_result(result)
@@ -1260,7 +1200,6 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
                 self.statusLabel.setText(f"Done. Features saved to: {output_csv}")
                 self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
 
-                print(f"[PySera] Done. Extracted {len(rows)} features. Output: {output_csv}")
                 logger.info(f"Done. Extracted {len(rows)} features. Output: {output_csv}")
                 return
 
@@ -1292,3 +1231,4 @@ class PySeraTest(ScriptedLoadableModuleTest):
             self.delayDisplay(f"Test failed: {e}")
             logger.error(f"PySeraTest failed: {e}")
             print(f"[PySera] TEST FAILED: {e}")
+
