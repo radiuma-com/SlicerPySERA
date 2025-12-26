@@ -1,4 +1,3 @@
-# SlicerPySera/CMakeLists.txt
 cmake_minimum_required(VERSION 3.16.3)
 project(PySERA)
 
@@ -12,12 +11,18 @@ set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/radiuma-com/Slic
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
-# Main scripted module (GUI)
-add_subdirectory(PySera_Ext)
+# -------------------------------
+# Install shared python library
+# -------------------------------
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pysera_lib
+  DESTINATION ${Slicer_INSTALL_QTSCRIPTEDMODULES_DIR}
+)
 
-# CLI wrapper module
+# -------------------------------
+# Modules
+# -------------------------------
+add_subdirectory(PySera_Ext)
 add_subdirectory(PySeraCLI)
 
 include(${Slicer_EXTENSION_CPACK})
-
-
