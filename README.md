@@ -51,8 +51,6 @@ It leverages the [PySERA library](https://github.com/radiuma-com/PySERA) for com
 
 - **PySera_Ext/** – Main 3D Slicer ScriptedLoadableModule (GUI). Includes vendored parameter files under `pysera_lib/`.
 - **PySeraCLI/** – Optional CLI wrapper for headless runs. Includes vendored parameter files under `pysera_cli_lib/`.
-- **PySeraQt/** – Disabled for Extension Index packaging (redundant wrapper and resource issues). Can be re-enabled after fixing resources.
-- **Resources/** – Assets such as screenshots and icons used by the extension entry pages. 
 - **Data/** – Example datasets for testing and development purposes.  
 - **Resources/** – All non-code assets, including GUI icons, screenshots, configuration files, and templates for reports.  
 
@@ -318,6 +316,7 @@ Funding provided by the **Natural Sciences and Engineering Research Council of C
 
 *This repository provides the **SlicerPySERA** extension for 3D Slicer.*  
 The [**PySERA core library**](https://github.com/radiuma-com/PySERA) is maintained separately for standalone Python usage.
+
 
 
 
