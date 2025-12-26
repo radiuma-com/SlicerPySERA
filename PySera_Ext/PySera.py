@@ -344,7 +344,7 @@ class PySERALogic(ScriptedLoadableModuleLogic):
             return []
 
         # ------------------------------------------------------------
-        # ✅ Case 0: DataFrame-like (what you have: [1 rows x 81 columns])
+        # Case 0: DataFrame-like (what you have: [1 rows x 81 columns])
         # Duck-typing: do NOT import pandas, just detect common attrs.
         # ------------------------------------------------------------
         try:
@@ -564,13 +564,17 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
     def _build_categories_panel(self, options, default_str):
         gb = qt.QGroupBox("Categories")
         gb.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
+
         v = qt.QVBoxLayout(gb)
+
         grid = qt.QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(15)
         grid.setVerticalSpacing(4)
+
         checks = []
         cols = 4
+
         default_all = (str(default_str).strip().lower() == "all")
         wanted = set()
         if not default_all and isinstance(default_str, str):
@@ -584,38 +588,23 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
             grid.addWidget(cb, r, c)
             checks.append(cb)
 
-        btnRow = qt.QHBoxLayout()
-        selAll = qt.QPushButton("Select all")
-        clrAll = qt.QPushButton("Clear all")
-
-        def _select_all():
-            for cb in checks:
-                cb.setChecked(True)
-
-        def _clear_all():
-            for cb in checks:
-                cb.setChecked(False)
-
-        selAll.clicked.connect(_select_all)
-        clrAll.clicked.connect(_clear_all)
-        btnRow.addStretch(1)
-        btnRow.addWidget(selAll)
-        btnRow.addWidget(clrAll)
-
         v.addLayout(grid)
-        v.addLayout(btnRow)
         return gb, checks
 
     def _build_dimensions_panel(self, options, default_str):
         gb = qt.QGroupBox("Dimensions")
         gb.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
+
         v = qt.QVBoxLayout(gb)
+
         grid = qt.QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(15)
         grid.setVerticalSpacing(4)
+
         checks = []
         cols = 4
+
         default_all = (str(default_str).strip().lower() == "all")
         wanted = set()
         if not default_all and isinstance(default_str, str):
@@ -629,26 +618,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
             grid.addWidget(cb, r, c)
             checks.append(cb)
 
-        btnRow = qt.QHBoxLayout()
-        selAll = qt.QPushButton("Select all")
-        clrAll = qt.QPushButton("Clear all")
-
-        def _select_all():
-            for cb in checks:
-                cb.setChecked(True)
-
-        def _clear_all():
-            for cb in checks:
-                cb.setChecked(False)
-
-        selAll.clicked.connect(_select_all)
-        clrAll.clicked.connect(_clear_all)
-        btnRow.addStretch(1)
-        btnRow.addWidget(selAll)
-        btnRow.addWidget(clrAll)
-
         v.addLayout(grid)
-        v.addLayout(btnRow)
         return gb, checks
 
     def _on_dimension_changed(self, dim_to_cats: dict, *_):
@@ -794,7 +764,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         settingsLay = qt.QVBoxLayout(settingsGroup)
         settingsLay.setSpacing(10)
 
-        commonGroup = qt.QGroupBox("Common Set (Handcrafted Feature and Deep Feature)")
+        commonGroup = qt.QGroupBox("Common Parameters (Handcrafted and Deep Feature)")
         commonGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
         commonLay = qt.QVBoxLayout(commonGroup)
         commonLay.setSpacing(8)
@@ -855,7 +825,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         })
 
         # Handcrafted-only
-        hcGroup = qt.QGroupBox("Just Set for (Handcrafted Feature)")
+        hcGroup = qt.QGroupBox("Parameters for Handcrafted Feature")
         hcGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
         hcLay = qt.QVBoxLayout(hcGroup)
         hcLay.setSpacing(8)
@@ -991,9 +961,13 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
 
         settingsTab.addWidget(settingsGroup)
 
-        # Feature subset
-        DIM_OPTIONS = ["all", "1st", "2D", "2_5D", "3D"]
-        CAT_OPTIONS = ["diag", "morph", "ip", "stat", "ih", "ivh", "glcm", "glrlm", "glszm", "gldzm", "ngtdm", "ngldm", "mi"]
+        # ---------------------------------
+        # Feature Subset (Categories + Dimensions)
+        # ---------------------------------
+        DIM_OPTIONS = ["1st", "2D", "2_5D", "3D"]
+        CAT_OPTIONS = ["diag", "morph", "ip", "stat", "ih", "ivh", "glcm",
+                       "glrlm", "glszm", "gldzm", "ngtdm", "ngldm", "mi"]
+
         DIM_TO_CATS = {
             "1st": ["morph", "ip", "stat", "ih", "ivh"],
             "2d": ["glcm", "glrlm", "glszm", "gldzm", "ngtdm", "ngldm"],
@@ -1004,28 +978,75 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         selGroup = qt.QGroupBox("Feature Subset")
         selGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
         selGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
-        selLay = qt.QHBoxLayout(selGroup)
-        selLay.setContentsMargins(6, 6, 6, 6)
-        selLay.setSpacing(15)
+
+        selLay = qt.QVBoxLayout(selGroup)
+        selLay.setSpacing(10)
+
+        # Categories & Dimensions panels
+        rowLay = qt.QHBoxLayout()
 
         cats_default = str(RDEF.get("categories", "all"))
-        catWidget, checks = self._build_categories_panel(CAT_OPTIONS, cats_default)
-        self.categoryChecks = checks
+        catWidget, self.categoryChecks = self._build_categories_panel(CAT_OPTIONS, cats_default)
 
         dims_default = str(RDEF.get("dimensions", "all"))
-        dimWidget, dchecks = self._build_dimensions_panel(DIM_OPTIONS, dims_default)
-        self.dimensionChecks = dchecks
+        dimWidget, self.dimensionChecks = self._build_dimensions_panel(DIM_OPTIONS, dims_default)
 
-        selLay.addWidget(catWidget, 3)
-        selLay.addWidget(dimWidget, 2)
+        rowLay.addWidget(catWidget, 3)
+        rowLay.addWidget(dimWidget, 2)
+
+        selLay.addLayout(rowLay)
+
+        # ---------------------------------
+        # Global Select / Clear buttons
+        # ---------------------------------
+        btnRow = qt.QHBoxLayout()
+        btnRow.addStretch(1)
+
+        btnSelectAll = qt.QPushButton("Select all")
+        btnClearAll = qt.QPushButton("Clear all")
+
+        btnSelectAll.setToolTip("Select all categories and dimensions")
+        btnClearAll.setToolTip("Clear all categories and dimensions")
+
+        def _global_select_all():
+            for cb in self.categoryChecks:
+                cb.setChecked(True)
+            for cb in self.dimensionChecks:
+                cb.setChecked(True)
+
+        def _global_clear_all():
+            for cb in self.categoryChecks:
+                cb.setChecked(False)
+            for cb in self.dimensionChecks:
+                cb.setChecked(False)
+
+        btnSelectAll.clicked.connect(_global_select_all)
+        btnClearAll.clicked.connect(_global_clear_all)
+
+        btnRow.addWidget(btnSelectAll)
+        btnRow.addWidget(btnClearAll)
+
+        selLay.addLayout(btnRow)
+
         selectTab.addWidget(selGroup)
 
-        self._categoryByName = {self._wtext(cb).strip().lower(): cb for cb in self.categoryChecks}
-        self._dimensionByName = {self._wtext(cb).strip().lower(): cb for cb in self.dimensionChecks}
+        # ---------------------------------
+        # Keep existing dimension → category sync
+        # ---------------------------------
+        self._categoryByName = {
+            self._wtext(cb).strip().lower(): cb
+            for cb in self.categoryChecks
+        }
+
+        self._dimensionByName = {
+            self._wtext(cb).strip().lower(): cb
+            for cb in self.dimensionChecks
+        }
 
         from functools import partial
         for cb in self.dimensionChecks:
             cb.toggled.connect(partial(self._on_dimension_changed, DIM_TO_CATS))
+
         qt.QTimer.singleShot(0, lambda: self._on_dimension_changed(DIM_TO_CATS))
 
         # Extraction mode
@@ -1044,10 +1065,6 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         deepModel.addItems(["resnet50", "vgg16", "densenet121", "none"])
         self._set_combo_safe(deepModel, RDEF.get("deep_learning_model", "none"))
 
-        optParams = qt.QLineEdit()
-        optParams.setPlaceholderText("key1=val1; key2=val2 ... (optional)")
-        optParams.setText(str(RDEF.get("optional_params", "")))
-
         row = qt.QWidget()
         rowLay = qt.QHBoxLayout(row)
         rowLay.setContentsMargins(0, 0, 0, 0)
@@ -1060,15 +1077,11 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         rowLay.addStretch(1)
         deepLay.addWidget(row)
 
-        deepLay.addWidget(qt.QLabel("Optional Params"))
-        deepLay.addWidget(optParams)
-
         deepTab.addWidget(deepGroup)
 
         self.param_widgets.update({
             "radiomics_extraction_mode": extrMode,
             "radiomics_deep_learning_model": deepModel,
-            "radiomics_optional_params": optParams,
         })
 
         def _toggle_for_mode():
