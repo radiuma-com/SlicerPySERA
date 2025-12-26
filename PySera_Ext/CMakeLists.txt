@@ -1,18 +1,10 @@
-# SlicerPySera/PySera_Ext/CMakeLists.txt
-
 set(MODULE_NAME PySera)
 
-# Python scripts that must be installed
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  pysera_lib/__init__.py
-  pysera_lib/version.py
 )
 
-# Resources that must be packaged with the module
 set(MODULE_PYTHON_RESOURCES
-  pysera_lib/parameters.yaml
-  pysera_lib/parameters.json
 )
 
 # Optional icon (do not fail packaging if missing)
