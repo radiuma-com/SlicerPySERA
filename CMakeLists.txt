@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(PySERA)
 
-set(EXTENSION_HOMEPAGE "https://github.com/MohammadRSalmanpour/SlicerPySERA")
+set(EXTENSION_HOMEPAGE "https://github.com/radiuma-com/SlicerPySERA")
 set(EXTENSION_CATEGORY "Analysis")
 set(EXTENSION_CONTRIBUTORS "Mohammad R. Salmanpour, Sirwan Barichin")
 set(EXTENSION_DESCRIPTION "PySERA radiomics extraction library integrated into 3D Slicer.")
@@ -19,3 +19,4 @@ add_subdirectory(PySera_Ext)
 add_subdirectory(PySeraCLI)
 
 include(${Slicer_EXTENSION_CPACK})
+
