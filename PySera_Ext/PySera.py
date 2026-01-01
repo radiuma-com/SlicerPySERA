@@ -6,8 +6,11 @@
 # - Only install/import pip packages inside Logic at runtime
 # - Parameters loaded from: <ExtensionRoot>/pysera_lib/parameters.yaml or parameters.json
 #
-# UI rule:
-# - "Extracted Features" table must show ONLY two columns: Feature | Value (no edits)
+# UI rules:
+# - "Extracted Features" table must show ONLY two columns: Feature | Value (read-only)
+# - Categories/Dimensions: NO per-panel Select/Clear buttons; use ONE global Select/Clear outside
+# - Support both: (A) single image+mask files, (B) folder batch inputs
+# - Keep Value column narrow; prevent first column from stretching too wide
 
 import os
 import json
@@ -25,6 +28,66 @@ from slicer.ScriptedLoadableModule import (
     ScriptedLoadableModuleWidget,
     ScriptedLoadableModuleTest,
 )
+
+# -------------------------------
+# UI Text (single source of truth)
+# -------------------------------
+UI_TEXT = {
+    # Tabs
+    "tab_io": "Input/Output",
+    "tab_mode": "Extraction Mode",
+    "tab_settings": "Advanced Settings",
+    "tab_select": "Feature Selection",
+    "tab_run": "Run & Results",
+
+    # Groups
+    "grp_inputs_outputs": "Inputs & Outputs",
+    "grp_common": "Common Settings",
+    "grp_handcrafted": "Handcrafted Radiomics Settings",
+    "grp_selection": "Feature Selection",
+    "grp_results": "Results",
+
+    # Input type
+    "lbl_input_type": "Input Type",
+    "opt_single": "Single Case (Image + Mask)",
+    "opt_batch": "Batch Processing (Folders)",
+
+    # I/O Labels
+    "lbl_image": "Image",
+    "lbl_mask": "Mask",
+    "lbl_image_folder": "Image Folder",
+    "lbl_mask_folder": "Mask Folder",
+    "lbl_output_folder": "Output Folder",
+    "lbl_temp_folder": "Temporary Folder",
+
+    # Buttons
+    "btn_run": "Run",
+    "btn_select_all": "Select All",
+    "btn_clear_all": "Clear All",
+
+    # Results
+    "lbl_summary": "Run Summary",
+    "lbl_extracted": "Extracted Features",
+
+    # Common settings
+    "chk_preprocess": "Enable Preprocessing",
+    "chk_parallel": "Enable Parallel Processing",
+    "chk_aggregate": "Aggregate per ROI",
+    "lab_workers": "Worker Processes",
+    "lab_min_roi": "Minimum ROI Volume",
+    "lab_roi_mode": "ROI Selection Mode",
+    "lab_log_level": "Log Level",
+
+    # Feature selection panels
+    "panel_categories": "Categories",
+    "panel_dimensions": "Dimensions",
+
+    # Extraction mode
+    "lab_extraction_mode": "Extraction Mode",
+    "lab_deep_model": "Deep Model",
+    "mode_hand": "Handcrafted Radiomics",
+    "mode_deep": "Deep Features",
+}
 
 # -------------------------------
 # Logger Helper
@@ -64,22 +127,32 @@ MODULE_DIR = os.path.dirname(__file__)
 def _find_pysera_lib_dir():
     """
     Locate pysera_lib directory.
-    Your project layout:
+
+    Preferred layout:
       <ExtensionRoot>/pysera_lib/parameters.yaml|json
       <ExtensionRoot>/PySera_Ext/PySera.py
 
-    We also support <ModuleDir>/pysera_lib for robustness.
+    Also supports installed layout where pysera_lib can be imported.
     """
-    candidates = [
-        os.path.join(MODULE_DIR, "pysera_lib"),
-        os.path.join(os.path.dirname(MODULE_DIR), "pysera_lib"),                  # Extension root
-        os.path.join(os.path.dirname(os.path.dirname(MODULE_DIR)), "pysera_lib"), # extra fallback
-    ]
+    # Installed layout (if pysera_lib is on sys.path)
+    try:
+        pysera_lib = importlib.import_module("pysera_lib")
+        d = os.path.dirname(getattr(pysera_lib, "__file__", "") or "")
+        if d:
+            return d
+    except Exception:
+        pass
 
+    # Source/dev layout fallbacks
+    ext_root = os.path.dirname(MODULE_DIR)  # <ExtensionRoot>
+    candidates = [
+        os.path.join(ext_root, "pysera_lib"),
+        os.path.join(MODULE_DIR, "pysera_lib"),
+        os.path.join(os.path.dirname(ext_root), "pysera_lib"),
+    ]
     for d in candidates:
         if os.path.exists(os.path.join(d, "parameters.yaml")) or os.path.exists(os.path.join(d, "parameters.json")):
             return d
-
     return candidates[0]
 
 
@@ -149,9 +222,9 @@ class PySera(ScriptedLoadableModule):
         self.parent.title = "PySERA"
         self.parent.categories = ["Analysis"]
         self.parent.dependencies = []
-        self.parent.contributors = ["Mohammad R. Salmanpour"]
-        self.parent.helpText = "PySERA feature extraction for 3D Slicer."
-        self.parent.acknowledgementText = "Thanks to ..."
+        self.parent.contributors = ["Mohammad R. Salmanpour", "Sirwan Barichin"]
+        self.parent.helpText = "PySERA radiomics feature extraction integrated into 3D Slicer."
+        self.parent.acknowledgementText = "Thanks to the 3D Slicer community."
 
 
 # -------------------------------
@@ -223,29 +296,23 @@ class PySERALogic(ScriptedLoadableModuleLogic):
 
     def _compose_cfg(self, params_from_ui: dict) -> dict:
         cfg = {}
-
-        # defaults from "radiomics" block
         for k, v in (RDEF or {}).items():
             cfg["radiomics_" + k] = v
-
-        # explicit I/O defaults
-        if "destination_folder" in RDEF:
-            cfg["radiomics_destination_folder"] = RDEF["destination_folder"]
-        if "temporary_files_path" in RDEF:
-            cfg["radiomics_temporary_files_path"] = RDEF["temporary_files_path"]
-
-        # allow top-level "radiomics_*" overrides
         for k, v in (CFG_FILE or {}).items():
             if isinstance(k, str) and k.startswith("radiomics_"):
                 cfg[k] = v
-
-        # UI overrides last
         cfg.update(params_from_ui or {})
         return cfg
 
     def _build_cli_kwargs(self, cfg: dict) -> dict:
         cli = {}
-        passthru_str = {"categories", "dimensions", "extraction_mode", "deep_learning_model", "optional_params", "report"}
+        passthru_str = {
+            "categories",
+            "dimensions",
+            "extraction_mode",
+            "deep_learning_model",
+            "report",
+        }
 
         for src_key, dst_key in (CLI_MAP or {}).items():
             if src_key not in cfg:
@@ -267,23 +334,14 @@ class PySERALogic(ScriptedLoadableModuleLogic):
         if model is not None and str(model).strip().lower() not in {"", "none"}:
             cli["deep_learning_model"] = str(model)
 
-        opt = cfg.get("radiomics_optional_params", None)
-        if opt is not None and str(opt).strip() != "":
-            cli["optional_params"] = str(opt)
-
         rep = cfg.get("radiomics_report", None)
         if rep is not None and str(rep).strip() != "":
             cli["report"] = str(rep)
 
         return cli
 
-    # ---------- Windows CSV lock fix ----------
     @staticmethod
     def _wait_for_readable_file(path: str, retries: int = 160, delay: float = 0.25):
-        """
-        Wait until file exists, has size, and is readable.
-        Useful as a fallback only (UI should prefer result['features_extracted']).
-        """
         last_err = None
         for _ in range(retries):
             try:
@@ -297,7 +355,6 @@ class PySERALogic(ScriptedLoadableModuleLogic):
             raise last_err
         return False
 
-    # ---------- CSV → (Feature, Value) rows (fallback) ----------
     def load_features_as_feature_value_rows(self, output_csv: str):
         ok = self._wait_for_readable_file(output_csv)
         if not ok:
@@ -326,7 +383,6 @@ class PySERALogic(ScriptedLoadableModuleLogic):
             values = rows[1]
             return [[header[i], values[i]] for i in range(len(header))]
 
-        # fallback: show each row as a single feature string
         out = []
         for r in rows[1:]:
             if not r:
@@ -334,7 +390,6 @@ class PySERALogic(ScriptedLoadableModuleLogic):
             out.append([",".join(r), ""])
         return out
 
-    # ---------- Result → (Feature, Value) rows (primary) ----------
     def feature_rows_from_result(self, result):
         if not isinstance(result, dict):
             return []
@@ -343,36 +398,37 @@ class PySERALogic(ScriptedLoadableModuleLogic):
         if fx is None:
             return []
 
-        # ------------------------------------------------------------
-        # Case 0: DataFrame-like (what you have: [1 rows x 81 columns])
-        # Duck-typing: do NOT import pandas, just detect common attrs.
-        # ------------------------------------------------------------
+        def _filter_meta(pairs):
+            drop = {"patientid", "roi", "case", "subject", "image", "mask"}
+            out = []
+            for k, v in pairs:
+                if str(k).strip().lower() in drop:
+                    continue
+                out.append([k, v])
+            return out
+
+        # DataFrame-like (duck-typing)
         try:
-            has_shape = hasattr(fx, "shape")
             has_columns = hasattr(fx, "columns")
             has_to_dict = hasattr(fx, "to_dict") and callable(getattr(fx, "to_dict"))
-            if has_shape and has_columns and has_to_dict:
-                # Prefer orient='records' if supported
+            if has_columns and has_to_dict:
                 row_dict = None
                 try:
-                    recs = fx.to_dict(orient="records")  # pandas DataFrame supports this
+                    recs = fx.to_dict(orient="records")
                     if recs and isinstance(recs[0], dict):
                         row_dict = recs[0]
                 except Exception:
                     row_dict = None
 
-                # Fallback: use iloc[0].to_dict()
                 if row_dict is None and hasattr(fx, "iloc"):
                     try:
                         row_dict = fx.iloc[0].to_dict()
                     except Exception:
                         row_dict = None
 
-                # Final fallback: plain to_dict (might be column->dict(index->value))
                 if row_dict is None:
                     try:
                         col_map = fx.to_dict()
-                        # pick first index value for each column
                         row_dict = {}
                         for k, v in col_map.items():
                             if isinstance(v, dict) and v:
@@ -383,52 +439,49 @@ class PySERALogic(ScriptedLoadableModuleLogic):
                         row_dict = None
 
                 if isinstance(row_dict, dict) and row_dict:
-                    # Keep column order if possible
+                    cols = []
                     try:
                         cols = list(fx.columns)
-                        return [[str(c), row_dict.get(c)] for c in cols]
                     except Exception:
-                        keys = list(row_dict.keys())
-                        return [[str(k), row_dict[k]] for k in keys]
+                        cols = list(row_dict.keys())
+                    pairs = [(str(c), row_dict.get(c)) for c in cols]
+                    return _filter_meta(pairs)
         except Exception:
             pass
 
-        # Case A: dict {feature: value}
         if isinstance(fx, dict):
             keys = list(fx.keys())
             try:
                 keys.sort()
             except Exception:
                 pass
-            return [[str(k), fx[k]] for k in keys]
+            return _filter_meta([(str(k), fx[k]) for k in keys])
 
-        # Case B: list formats
         if isinstance(fx, list):
-            # 2×N (names row + values row) -> transpose
+            # 2×N -> transpose
             if (
-                    len(fx) == 2
-                    and isinstance(fx[0], (list, tuple))
-                    and isinstance(fx[1], (list, tuple))
-                    and len(fx[0]) == len(fx[1])
-                    and len(fx[0]) > 0
+                len(fx) == 2
+                and isinstance(fx[0], (list, tuple))
+                and isinstance(fx[1], (list, tuple))
+                and len(fx[0]) == len(fx[1])
+                and len(fx[0]) > 0
             ):
                 names = fx[0]
                 values = fx[1]
-                return [[str(names[i]), values[i]] for i in range(len(names))]
+                return _filter_meta([(str(names[i]), values[i]) for i in range(len(names))])
 
-            rows = []
+            pairs = []
             for item in fx:
                 if isinstance(item, (list, tuple)) and len(item) >= 2:
-                    rows.append([str(item[0]), item[1]])
+                    pairs.append((str(item[0]), item[1]))
                 elif isinstance(item, dict):
                     if "feature" in item and "value" in item:
-                        rows.append([str(item["feature"]), item["value"]])
+                        pairs.append((str(item["feature"]), item["value"]))
                     else:
                         for k, v in item.items():
-                            rows.append([str(k), v])
-            return rows
+                            pairs.append((str(k), v))
+            return _filter_meta(pairs)
 
-        # Case C: string (maybe JSON dict)
         if isinstance(fx, str):
             s = fx.strip()
             try:
@@ -439,34 +492,14 @@ class PySERALogic(ScriptedLoadableModuleLogic):
                         keys.sort()
                     except Exception:
                         pass
-                    return [[str(k), obj[k]] for k in keys]
+                    return _filter_meta([(str(k), obj[k]) for k in keys])
             except Exception:
                 pass
             return [["features_extracted", fx]]
 
         return [["features_extracted", str(fx)]]
 
-    def run_single_pair(self, image_path, mask_path, params=None):
-        pysera = self._import_pysera()
-        cfg = self._compose_cfg(params)
-
-        out_dir = cfg.get("radiomics_destination_folder") or os.path.join(
-            os.path.expanduser("~"), "Desktop", "output_result"
-        )
-        out_dir = os.path.abspath(out_dir)
-        os.makedirs(out_dir, exist_ok=True)
-
-        timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        random_suffix = random.randint(1000, 9999)
-        output_csv = os.path.join(out_dir, f"extracted_radiomics_features_{timestamp}_{random_suffix}.csv")
-
-        logger.debug(f"Output directory: {out_dir}")
-        logger.info(f"Output CSV path: {output_csv}")
-
-        cli_kwargs = self._build_cli_kwargs(cfg)
-        cli_kwargs.setdefault("categories", str(cfg.get("radiomics_categories", "all")))
-        cli_kwargs.setdefault("dimensions", str(cfg.get("radiomics_dimensions", "all")))
-
+    def _configure_logging_level(self, cfg: dict):
         level_map = {
             "none": logging.CRITICAL + 1,
             "error": logging.ERROR,
@@ -480,17 +513,48 @@ class PySERALogic(ScriptedLoadableModuleLogic):
         for h in logger.logger.handlers:
             h.setLevel(level)
 
-        result = pysera.process_batch(
-            image_input=image_path,
-            mask_input=mask_path,
-            output_path=output_csv,
+    def _make_output_csv(self, cfg: dict, prefix: str):
+        out_dir = cfg.get("radiomics_destination_folder") or os.path.join(
+            os.path.expanduser("~"), "Desktop", "output_result"
+        )
+        out_dir = os.path.abspath(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        random_suffix = random.randint(1000, 9999)
+        output_csv = os.path.join(out_dir, f"{prefix}_{timestamp}_{random_suffix}.csv")
+
+        logger.debug(f"Output directory: {out_dir}")
+        logger.info(f"Output CSV path: {output_csv}")
+        return output_csv
+
+    def _run_process_batch(self, image_input, mask_input, cfg: dict):
+        pysera = self._import_pysera()
+        cli_kwargs = self._build_cli_kwargs(cfg)
+        cli_kwargs.setdefault("categories", str(cfg.get("radiomics_categories", "all")))
+        cli_kwargs.setdefault("dimensions", str(cfg.get("radiomics_dimensions", "all")))
+        self._configure_logging_level(cfg)
+
+        return pysera.process_batch(
+            image_input=image_input,
+            mask_input=mask_input,
+            output_path=cfg["_output_csv_path"],
             **cli_kwargs,
         )
 
-        # IMPORTANT: do not block or fail UI on CSV readiness.
-        # The UI will show extracted features from result['features_extracted'].
-        logger.info(f"Feature extraction completed: {output_csv}")
-        return output_csv, result
+    def run_single_case(self, image_path, mask_path, params=None):
+        cfg = self._compose_cfg(params)
+        cfg["_output_csv_path"] = self._make_output_csv(cfg, "extracted_radiomics_features")
+        result = self._run_process_batch(image_path, mask_path, cfg)
+        logger.info(f"Feature extraction completed: {cfg['_output_csv_path']}")
+        return cfg["_output_csv_path"], result
+
+    def run_batch_folders(self, image_folder, mask_folder, params=None):
+        cfg = self._compose_cfg(params)
+        cfg["_output_csv_path"] = self._make_output_csv(cfg, "extracted_radiomics_features_BATCH")
+        result = self._run_process_batch(image_folder, mask_folder, cfg)
+        logger.info(f"Batch feature extraction completed: {cfg['_output_csv_path']}")
+        return cfg["_output_csv_path"], result
 
 
 # -------------------------------
@@ -510,13 +574,16 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
     # ---------- helpers ----------
     @staticmethod
     def _wtext(widget) -> str:
-        if hasattr(widget, "text") and callable(getattr(widget, "text", None)):
-            try:
-                return widget.text()
-            except Exception:
-                pass
-        t = getattr(widget, "text", "")
-        return t if isinstance(t, str) else str(t)
+        # Some Qt wrappers expose .text as property (string), others as method.
+        try:
+            t = getattr(widget, "text", "")
+            if callable(t):
+                return t()
+            if isinstance(t, str):
+                return t
+            return str(t)
+        except Exception:
+            return ""
 
     @staticmethod
     def _val_from_widget(w):
@@ -534,18 +601,29 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
     def _set_combo_safe(combo: qt.QComboBox, value: str):
         if value is None:
             return
-        for i in range(combo.count):
-            if combo.itemText(i).lower() == str(value).lower():
+        try:
+            count = combo.count
+        except Exception:
+            count = combo.count()
+        for i in range(count):
+            try:
+                it = combo.itemText(i)
+            except Exception:
+                it = combo.itemText(i)
+            if str(it).lower() == str(value).lower():
                 combo.setCurrentIndex(i)
                 return
 
     def _combo_text_safe(self, combo: qt.QComboBox) -> str:
-        return combo.currentText() if callable(getattr(combo, "currentText", None)) else str(getattr(combo, "currentText", ""))
+        try:
+            return combo.currentText()
+        except Exception:
+            return str(getattr(combo, "currentText", ""))
 
     @staticmethod
-    def _shrink_editor(w, fixed_width=140):
+    def _shrink_editor(w, fixed_width=160):
         if isinstance(w, (qt.QLineEdit, qt.QComboBox, qt.QSpinBox, qt.QDoubleSpinBox)):
-            w.setFixedWidth(fixed_width)
+            w.setFixedWidth(int(fixed_width))
             w.setSizePolicy(qt.QSizePolicy.Fixed, qt.QSizePolicy.Preferred)
         return w
 
@@ -561,10 +639,9 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         grid.addWidget(lbl2, row, 2)
         grid.addWidget(w2, row, 3)
 
-    def _build_categories_panel(self, options, default_str):
-        gb = qt.QGroupBox("Categories")
+    def _build_check_grid_panel(self, title, options, default_str):
+        gb = qt.QGroupBox(title)
         gb.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
-
         v = qt.QVBoxLayout(gb)
 
         grid = qt.QGridLayout()
@@ -574,37 +651,6 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
 
         checks = []
         cols = 4
-
-        default_all = (str(default_str).strip().lower() == "all")
-        wanted = set()
-        if not default_all and isinstance(default_str, str):
-            wanted = {x.strip().lower() for x in default_str.split(",") if x.strip()}
-
-        for idx, name in enumerate(options):
-            cb = qt.QCheckBox(name)
-            cb.setChecked(True if default_all else (name.lower() in wanted))
-            r = idx // cols
-            c = idx % cols
-            grid.addWidget(cb, r, c)
-            checks.append(cb)
-
-        v.addLayout(grid)
-        return gb, checks
-
-    def _build_dimensions_panel(self, options, default_str):
-        gb = qt.QGroupBox("Dimensions")
-        gb.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
-
-        v = qt.QVBoxLayout(gb)
-
-        grid = qt.QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(15)
-        grid.setVerticalSpacing(4)
-
-        checks = []
-        cols = 4
-
         default_all = (str(default_str).strip().lower() == "all")
         wanted = set()
         if not default_all and isinstance(default_str, str):
@@ -651,6 +697,66 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         for name, ccb in getattr(self, "_categoryByName", {}).items():
             ccb.setChecked(name in wanted)
 
+    @staticmethod
+    def _shorten_for_cell(v, max_len=90):
+        s = "" if v is None else str(v)
+        s = s.replace("\n", " ").strip()
+        if len(s) <= max_len:
+            return s
+        return s[: max_len - 1] + "…"
+
+    def _apply_two_column_widths(self, table, value_width=170, feature_max_width=520, left_min=None, right_width=None):
+        """
+        Two-column sizing for QTableWidget:
+          - Column 0: content-sized but capped (prevents huge stretched column)
+          - Column 1: fixed small width
+        Backward-compatible:
+          - left_min -> cap for col 0
+          - right_width -> width for col 1
+        """
+        if right_width is not None:
+            value_width = int(right_width)
+        if left_min is not None:
+            feature_max_width = int(left_min)
+
+        try:
+            table.setWordWrap(False)
+        except Exception:
+            pass
+        try:
+            table.setTextElideMode(qt.Qt.ElideRight)
+        except Exception:
+            pass
+
+        header = table.horizontalHeader()
+        try:
+            header.setStretchLastSection(False)
+        except Exception:
+            pass
+
+        try:
+            header.setSectionResizeMode(0, qt.QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(1, qt.QHeaderView.Fixed)
+        except Exception:
+            try:
+                header.setResizeMode(0, qt.QHeaderView.ResizeToContents)
+                header.setResizeMode(1, qt.QHeaderView.Fixed)
+            except Exception:
+                pass
+
+        try:
+            table.setColumnWidth(1, int(value_width))
+        except Exception:
+            pass
+
+        try:
+            table.resizeColumnToContents(0)
+            w = table.columnWidth(0)
+            if w > int(feature_max_width):
+                table.setColumnWidth(0, int(feature_max_width))
+        except Exception:
+            pass
+
     def _make_scroll_tab(self, title: str, tabs: qt.QTabWidget):
         page = qt.QWidget()
         page.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
@@ -679,18 +785,29 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         self.featureTable.setRowCount(0)
         self.featureTable.setColumnCount(2)
         self.featureTable.setHorizontalHeaderLabels(["Feature", "Value"])
+
         for feat, val in rows:
             r = self.featureTable.rowCount
             self.featureTable.insertRow(r)
             self.featureTable.setItem(r, 0, qt.QTableWidgetItem("" if feat is None else str(feat)))
-            self.featureTable.setItem(r, 1, qt.QTableWidgetItem("" if val is None else str(val)))
-        self.featureTable.resizeColumnsToContents()
+            self.featureTable.setItem(r, 1, qt.QTableWidgetItem(self._shorten_for_cell(val, 120)))
+
+        self._apply_two_column_widths(self.featureTable, right_width=170, left_min=520)
+
+    def _fill_summary_table(self, items):
+        self.summaryTable.clear()
+        self.summaryTable.setRowCount(0)
+        self.summaryTable.setColumnCount(2)
+        self.summaryTable.setHorizontalHeaderLabels(["Parameter", "Value"])
+
+        for i, (k, v) in enumerate(items):
+            self.summaryTable.insertRow(i)
+            self.summaryTable.setItem(i, 0, qt.QTableWidgetItem(str(k)))
+            self.summaryTable.setItem(i, 1, qt.QTableWidgetItem(self._shorten_for_cell(v, 80)))
+
+        self._apply_two_column_widths(self.summaryTable, right_width=220, left_min=380)
 
     def _poll_csv_until_ready(self, output_csv, tries=160, interval_ms=250):
-        """
-        Fallback only: if result['features_extracted'] is not parseable.
-        This is async and DOES NOT return rows.
-        """
         self._csvPollRemaining = tries
 
         def _tick():
@@ -699,8 +816,10 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
                 rows = self.logic.load_features_as_feature_value_rows(output_csv)
                 if rows:
                     self._fill_extracted_features_table(rows)
-                    self.statusLabel.setText(f"Features loaded from: {output_csv}")
+                    self.statusLabel.setText(f"Done. Loaded features from CSV.")
                     self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
+                    logger.info(f"Loaded features from CSV: {output_csv}")
+                    print(f"[PySera] Loaded features from CSV: {output_csv}")
                     return
             except Exception:
                 pass
@@ -709,10 +828,12 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
                 qt.QTimer.singleShot(interval_ms, _tick)
             else:
                 self._fill_extracted_features_table([["Error", "Could not load features (CSV not ready/locked)"]])
-                self.statusLabel.setText("CSV was not ready in time.")
+                self.statusLabel.setText("Error: CSV was not ready in time.")
                 self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
+                logger.error(f"CSV not ready in time: {output_csv}")
+                print(f"[PySera] CSV not ready in time: {output_csv}")
 
-        self.statusLabel.setText("Waiting for output CSV to be finalized...")
+        self.statusLabel.setText("Running... waiting for output file to finalize.")
         self.statusLabel.setStyleSheet("color: blue; font-weight: bold;")
         qt.QTimer.singleShot(interval_ms, _tick)
 
@@ -725,25 +846,55 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         tabs.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         root.addWidget(tabs, 1)
 
-        ioTab = self._make_scroll_tab("I/O", tabs)
-        deepTab = self._make_scroll_tab("Features Extraction Mode", tabs)
-        settingsTab = self._make_scroll_tab("Settings", tabs)
-        selectTab = self._make_scroll_tab("Feature Subset", tabs)
-        runTab = self._make_scroll_tab("Run and Results", tabs)
+        ioTab = self._make_scroll_tab(UI_TEXT["tab_io"], tabs)
+        deepTab = self._make_scroll_tab(UI_TEXT["tab_mode"], tabs)
+        settingsTab = self._make_scroll_tab(UI_TEXT["tab_settings"], tabs)
+        selectTab = self._make_scroll_tab(UI_TEXT["tab_select"], tabs)
+        runTab = self._make_scroll_tab(UI_TEXT["tab_run"], tabs)
 
-        # I/O
-        ioGroup = qt.QGroupBox("Inputs and Outputs")
+        # -----------------------------
+        # Input/Output
+        # -----------------------------
+        ioGroup = qt.QGroupBox(UI_TEXT["grp_inputs_outputs"])
         ioGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
         ioGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
         ioForm = qt.QFormLayout(ioGroup)
 
+        # Input type selector
+        self.inputModeGroup = qt.QButtonGroup()
+        self.singleModeRadio = qt.QRadioButton(UI_TEXT["opt_single"])
+        self.folderModeRadio = qt.QRadioButton(UI_TEXT["opt_batch"])
+        self.singleModeRadio.setChecked(True)
+        self.inputModeGroup.addButton(self.singleModeRadio, 0)
+        self.inputModeGroup.addButton(self.folderModeRadio, 1)
+
+        modeRow = qt.QWidget()
+        modeLay = qt.QHBoxLayout(modeRow)
+        modeLay.setContentsMargins(0, 0, 0, 0)
+        modeLay.setSpacing(12)
+        modeLay.addWidget(qt.QLabel(UI_TEXT["lbl_input_type"] + ":"))
+        modeLay.addWidget(self.singleModeRadio)
+        modeLay.addWidget(self.folderModeRadio)
+        modeLay.addStretch(1)
+        ioForm.addRow(modeRow)
+
+        # Single file inputs
         self.imagePathEdit = ctk.ctkPathLineEdit()
         self.imagePathEdit.filters = ctk.ctkPathLineEdit.Files
         self.maskPathEdit = ctk.ctkPathLineEdit()
         self.maskPathEdit.filters = ctk.ctkPathLineEdit.Files
-        ioForm.addRow("Image File:", self.imagePathEdit)
-        ioForm.addRow("Mask File:", self.maskPathEdit)
+        ioForm.addRow(UI_TEXT["lbl_image"] + ":", self.imagePathEdit)
+        ioForm.addRow(UI_TEXT["lbl_mask"] + ":", self.maskPathEdit)
 
+        # Folder inputs (batch mode)
+        self.imageFolderEdit = ctk.ctkPathLineEdit()
+        self.imageFolderEdit.filters = ctk.ctkPathLineEdit.Dirs
+        self.maskFolderEdit = ctk.ctkPathLineEdit()
+        self.maskFolderEdit.filters = ctk.ctkPathLineEdit.Dirs
+        ioForm.addRow(UI_TEXT["lbl_image_folder"] + ":", self.imageFolderEdit)
+        ioForm.addRow(UI_TEXT["lbl_mask_folder"] + ":", self.maskFolderEdit)
+
+        # Output dirs
         self.outputDirEdit = ctk.ctkPathLineEdit()
         self.outputDirEdit.filters = ctk.ctkPathLineEdit.Dirs
         self.tmpDirEdit = ctk.ctkPathLineEdit()
@@ -752,28 +903,43 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         self.outputDirEdit.currentPath = RDEF.get("destination_folder", "./output_result")
         self.tmpDirEdit.currentPath = RDEF.get("temporary_files_path", "./temporary_files_path")
 
-        ioForm.addRow("Destination Folder:", self.outputDirEdit)
-        ioForm.addRow("Temporary Files Path:", self.tmpDirEdit)
+        ioForm.addRow(UI_TEXT["lbl_output_folder"] + ":", self.outputDirEdit)
+        ioForm.addRow(UI_TEXT["lbl_temp_folder"] + ":", self.tmpDirEdit)
+
+        def _update_input_mode_ui(*_):
+            is_single = self.singleModeRadio.isChecked()
+            self.imagePathEdit.setEnabled(is_single)
+            self.maskPathEdit.setEnabled(is_single)
+            self.imageFolderEdit.setEnabled(not is_single)
+            self.maskFolderEdit.setEnabled(not is_single)
+
+        self.singleModeRadio.toggled.connect(_update_input_mode_ui)
+        self.folderModeRadio.toggled.connect(_update_input_mode_ui)
+        _update_input_mode_ui()
 
         ioTab.addWidget(ioGroup)
 
-        # Settings
-        settingsGroup = qt.QGroupBox("Settings")
+        # -----------------------------
+        # Advanced Settings
+        # -----------------------------
+        settingsGroup = qt.QGroupBox(UI_TEXT["tab_settings"])
         settingsGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
         settingsGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
         settingsLay = qt.QVBoxLayout(settingsGroup)
         settingsLay.setSpacing(10)
 
-        commonGroup = qt.QGroupBox("Common Parameters (Handcrafted and Deep Feature)")
+        commonGroup = qt.QGroupBox(UI_TEXT["grp_common"])
         commonGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
         commonLay = qt.QVBoxLayout(commonGroup)
         commonLay.setSpacing(8)
 
-        applyPreChk = qt.QCheckBox("Apply Preprocessing")
+        applyPreChk = qt.QCheckBox(UI_TEXT["chk_preprocess"])
         applyPreChk.setChecked(bool(RDEF.get("apply_preprocessing", False)))
-        enParChk = qt.QCheckBox("Enable Parallelism")
+
+        enParChk = qt.QCheckBox(UI_TEXT["chk_parallel"])
         enParChk.setChecked(bool(RDEF.get("enable_parallelism", True)))
-        aggrChk = qt.QCheckBox("Aggregation (Lesion)")
+
+        aggrChk = qt.QCheckBox(UI_TEXT["chk_aggregate"])
         aggrChk.setChecked(bool(RDEF.get("aggregation_lesion", 0)))
 
         togglesRow = qt.QWidget()
@@ -792,7 +958,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         commonGrid.setVerticalSpacing(8)
 
         numWorkersEdit = qt.QLineEdit()
-        numWorkersEdit.setPlaceholderText("auto or int")
+        numWorkersEdit.setPlaceholderText("auto or integer")
         numWorkersEdit.setText(str(RDEF.get("num_workers", "auto")))
 
         minRoiSpin = qt.QDoubleSpinBox()
@@ -800,7 +966,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         minRoiSpin.setDecimals(0)
         minRoiSpin.setValue(float(RDEF.get("min_roi_volume", 10)))
 
-        self._add_two_grid(commonGrid, 0, "Num Workers", numWorkersEdit, "Min ROI Volume", minRoiSpin)
+        self._add_two_grid(commonGrid, 0, UI_TEXT["lab_workers"], numWorkersEdit, UI_TEXT["lab_min_roi"], minRoiSpin)
 
         roiSel = qt.QComboBox()
         roiSel.addItems(["per_Img", "per_region"])
@@ -809,7 +975,8 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         reportC = qt.QComboBox()
         reportC.addItems(["none", "error", "warning", "info", "all"])
         self._set_combo_safe(reportC, RDEF.get("report", "all"))
-        self._add_two_grid(commonGrid, 1, "ROI Selection Mode", roiSel, "Report", reportC)
+
+        self._add_two_grid(commonGrid, 1, UI_TEXT["lab_roi_mode"], roiSel, UI_TEXT["lab_log_level"], reportC)
 
         commonLay.addLayout(commonGrid)
         settingsLay.addWidget(commonGroup)
@@ -824,8 +991,8 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
             "radiomics_report": reportC,
         })
 
-        # Handcrafted-only
-        hcGroup = qt.QGroupBox("Parameters for Handcrafted Feature")
+        # Handcrafted-only settings
+        hcGroup = qt.QGroupBox(UI_TEXT["grp_handcrafted"])
         hcGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
         hcLay = qt.QVBoxLayout(hcGroup)
         hcLay.setSpacing(8)
@@ -846,9 +1013,9 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         flags = [
             mkchk("GL Round", "isGLround", 0),
             mkchk("Scale", "isScale", 0),
-            mkchk("Re-Seg Range", "isReSegRng", 0),
-            mkchk("Outliers", "isOutliers", 0),
-            mkchk("Quantized Stats", "isQuntzStat", 1),
+            mkchk("Re-segmentation Range", "isReSegRng", 0),
+            mkchk("Outlier Removal", "isOutliers", 0),
+            mkchk("Quantized Statistics", "isQuntzStat", 1),
             mkchk("2D Isotropic", "isIsot2D", 0),
         ]
         for i, cb in enumerate(flags):
@@ -930,16 +1097,17 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         ivhBin.setValue(float(RDEF.get("IVH_binSize", 2.0)))
 
         self._add_two_grid(gridHC, 0, "Bin Size", binSizeSpin, "Feature Value Mode", fvm)
-        self._add_two_grid(gridHC, 1, "Data Type", dtype, "Discretization", discType)
-        self._add_two_grid(gridHC, 2, "Voxel Interp", voxI, "ROI Interp", roiI)
-        self._add_two_grid(gridHC, 3, "Isotropic Vox 3D", iso3D, "Isotropic Vox 2D", iso2D)
-        self._add_two_grid(gridHC, 4, "ReSeg Low", reSeg01Edit, "ReSeg High", reSeg02Edit)
-        self._add_two_grid(gridHC, 5, "ROI PV", roiPvSpin, "Quantization", qntzCombo)
-        self._add_two_grid(gridHC, 6, "IVH Type", ivhType, "IVH DiscCont", ivhDisc)
-        self._add_two_grid(gridHC, 7, "IVH BinSize", ivhBin, "", qt.QLabel(""))
+        self._add_two_grid(gridHC, 1, "Modality", dtype, "Discretization", discType)
+        self._add_two_grid(gridHC, 2, "Voxel Interpolation", voxI, "ROI Interpolation", roiI)
+        self._add_two_grid(gridHC, 3, "Isotropic Voxel Size (3D)", iso3D, "Isotropic Voxel Size (2D)", iso2D)
+        self._add_two_grid(gridHC, 4, "Re-seg Low", reSeg01Edit, "Re-seg High", reSeg02Edit)
+        self._add_two_grid(gridHC, 5, "Partial Volume (ROI)", roiPvSpin, "Quantization", qntzCombo)
+        self._add_two_grid(gridHC, 6, "IVH Type", ivhType, "IVH Disc/Cont", ivhDisc)
+        self._add_two_grid(gridHC, 7, "IVH Bin Size", ivhBin, "", qt.QLabel(""))
 
         hcLay.addLayout(gridHC)
         settingsLay.addWidget(hcGroup)
+        settingsTab.addWidget(settingsGroup)
 
         self.param_widgets.update({
             "radiomics_BinSize": binSizeSpin,
@@ -959,15 +1127,11 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
             "radiomics_IVH_binSize": ivhBin,
         })
 
-        settingsTab.addWidget(settingsGroup)
-
-        # ---------------------------------
-        # Feature Subset (Categories + Dimensions)
-        # ---------------------------------
-        DIM_OPTIONS = ["1st", "2D", "2_5D", "3D"]
-        CAT_OPTIONS = ["diag", "morph", "ip", "stat", "ih", "ivh", "glcm",
-                       "glrlm", "glszm", "gldzm", "ngtdm", "ngldm", "mi"]
-
+        # -----------------------------
+        # Feature Selection
+        # -----------------------------
+        DIM_OPTIONS = ["all", "1st", "2D", "2_5D", "3D"]
+        CAT_OPTIONS = ["diag", "morph", "ip", "stat", "ih", "ivh", "glcm", "glrlm", "glszm", "gldzm", "ngtdm", "ngldm", "mi"]
         DIM_TO_CATS = {
             "1st": ["morph", "ip", "stat", "ih", "ivh"],
             "2d": ["glcm", "glrlm", "glszm", "gldzm", "ngtdm", "ngldm"],
@@ -975,38 +1139,31 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
             "3d": ["glcm", "glrlm", "glszm", "gldzm", "ngtdm", "ngldm"],
         }
 
-        selGroup = qt.QGroupBox("Feature Subset")
+        selGroup = qt.QGroupBox(UI_TEXT["grp_selection"])
         selGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
         selGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
 
         selLay = qt.QVBoxLayout(selGroup)
+        selLay.setContentsMargins(6, 6, 6, 6)
         selLay.setSpacing(10)
 
-        # Categories & Dimensions panels
-        rowLay = qt.QHBoxLayout()
+        panelsRow = qt.QHBoxLayout()
 
         cats_default = str(RDEF.get("categories", "all"))
-        catWidget, self.categoryChecks = self._build_categories_panel(CAT_OPTIONS, cats_default)
+        catWidget, self.categoryChecks = self._build_check_grid_panel(UI_TEXT["panel_categories"], CAT_OPTIONS, cats_default)
 
         dims_default = str(RDEF.get("dimensions", "all"))
-        dimWidget, self.dimensionChecks = self._build_dimensions_panel(DIM_OPTIONS, dims_default)
+        dimWidget, self.dimensionChecks = self._build_check_grid_panel(UI_TEXT["panel_dimensions"], DIM_OPTIONS, dims_default)
 
-        rowLay.addWidget(catWidget, 3)
-        rowLay.addWidget(dimWidget, 2)
+        panelsRow.addWidget(catWidget, 3)
+        panelsRow.addWidget(dimWidget, 2)
+        selLay.addLayout(panelsRow)
 
-        selLay.addLayout(rowLay)
-
-        # ---------------------------------
-        # Global Select / Clear buttons
-        # ---------------------------------
+        # Global Select/Clear outside panels
         btnRow = qt.QHBoxLayout()
         btnRow.addStretch(1)
-
-        btnSelectAll = qt.QPushButton("Select all")
-        btnClearAll = qt.QPushButton("Clear all")
-
-        btnSelectAll.setToolTip("Select all categories and dimensions")
-        btnClearAll.setToolTip("Clear all categories and dimensions")
+        btnSelectAll = qt.QPushButton(UI_TEXT["btn_select_all"])
+        btnClearAll = qt.QPushButton(UI_TEXT["btn_clear_all"])
 
         def _global_select_all():
             for cb in self.categoryChecks:
@@ -1022,43 +1179,35 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
 
         btnSelectAll.clicked.connect(_global_select_all)
         btnClearAll.clicked.connect(_global_clear_all)
-
         btnRow.addWidget(btnSelectAll)
         btnRow.addWidget(btnClearAll)
-
         selLay.addLayout(btnRow)
 
         selectTab.addWidget(selGroup)
 
-        # ---------------------------------
-        # Keep existing dimension → category sync
-        # ---------------------------------
-        self._categoryByName = {
-            self._wtext(cb).strip().lower(): cb
-            for cb in self.categoryChecks
-        }
-
-        self._dimensionByName = {
-            self._wtext(cb).strip().lower(): cb
-            for cb in self.dimensionChecks
-        }
+        # Robust mapping (no cb.text() callable assumption)
+        self._categoryByName = {self._wtext(cb).strip().lower(): cb for cb in self.categoryChecks}
+        self._dimensionByName = {self._wtext(cb).strip().lower(): cb for cb in self.dimensionChecks}
 
         from functools import partial
         for cb in self.dimensionChecks:
             cb.toggled.connect(partial(self._on_dimension_changed, DIM_TO_CATS))
-
         qt.QTimer.singleShot(0, lambda: self._on_dimension_changed(DIM_TO_CATS))
 
-        # Extraction mode
-        deepGroup = qt.QGroupBox("Feature Extraction Mode")
-        deepGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
-        deepGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
-        deepLay = qt.QVBoxLayout(deepGroup)
-        deepLay.setSpacing(10)
+        # -----------------------------
+        # Extraction Mode
+        # -----------------------------
+        modeGroup = qt.QGroupBox(UI_TEXT["tab_mode"])
+        modeGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
+        modeGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Maximum)
+        modeLay = qt.QVBoxLayout(modeGroup)
+        modeLay.setSpacing(10)
 
         extrMode = qt.QComboBox()
-        extrMode.addItems(["handcrafted feature", "deep feature"])
-        pretty_default = "handcrafted feature" if str(RDEF.get("extraction_mode", "handcrafted_feature")).replace("_", " ") == "handcrafted feature" else "deep feature"
+        extrMode.addItems([UI_TEXT["mode_hand"], UI_TEXT["mode_deep"]])
+
+        default_mode_raw = str(RDEF.get("extraction_mode", "handcrafted_feature")).strip().lower()
+        pretty_default = UI_TEXT["mode_hand"] if "hand" in default_mode_raw else UI_TEXT["mode_deep"]
         self._set_combo_safe(extrMode, pretty_default)
 
         deepModel = qt.QComboBox()
@@ -1069,15 +1218,15 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         rowLay = qt.QHBoxLayout(row)
         rowLay.setContentsMargins(0, 0, 0, 0)
         rowLay.setSpacing(12)
-        rowLay.addWidget(qt.QLabel("Extraction Mode"))
-        rowLay.addWidget(self._shrink_editor(extrMode))
+        rowLay.addWidget(qt.QLabel(UI_TEXT["lab_extraction_mode"]))
+        rowLay.addWidget(self._shrink_editor(extrMode, 200))
         rowLay.addSpacing(10)
-        rowLay.addWidget(qt.QLabel("Deep Model"))
-        rowLay.addWidget(self._shrink_editor(deepModel))
+        rowLay.addWidget(qt.QLabel(UI_TEXT["lab_deep_model"]))
+        rowLay.addWidget(self._shrink_editor(deepModel, 160))
         rowLay.addStretch(1)
-        deepLay.addWidget(row)
+        modeLay.addWidget(row)
 
-        deepTab.addWidget(deepGroup)
+        deepTab.addWidget(modeGroup)
 
         self.param_widgets.update({
             "radiomics_extraction_mode": extrMode,
@@ -1086,16 +1235,17 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
 
         def _toggle_for_mode():
             pretty = self._combo_text_safe(extrMode).strip().lower()
-            canonical = "handcrafted_feature" if "handcrafted" in pretty else "deep_feature"
-            is_hand = (canonical == "handcrafted_feature")
+            is_hand = ("handcrafted" in pretty)
             hcGroup.setEnabled(is_hand)
             selGroup.setEnabled(is_hand)
 
         _toggle_for_mode()
         extrMode.currentIndexChanged.connect(lambda *_: _toggle_for_mode())
 
+        # -----------------------------
         # Run & Results
-        runGroup = qt.QGroupBox("Run and Results")
+        # -----------------------------
+        runGroup = qt.QGroupBox(UI_TEXT["grp_results"])
         runGroup.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
         runGroup.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         runLay = qt.QVBoxLayout(runGroup)
@@ -1106,7 +1256,7 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         topLay.setContentsMargins(0, 0, 0, 0)
         topLay.setSpacing(10)
 
-        self.computeButton = qt.QPushButton("Apply")
+        self.computeButton = qt.QPushButton(UI_TEXT["btn_run"])
         self.computeButton.setMinimumHeight(30)
         self.computeButton.clicked.connect(self.onCompute)
 
@@ -1118,53 +1268,72 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         topLay.addWidget(self.statusLabel, 1)
         runLay.addWidget(topRow)
 
+        # Summary table
+        runLay.addWidget(qt.QLabel(UI_TEXT["lbl_summary"] + ":"))
         self.summaryTable = qt.QTableWidget()
         self.summaryTable.setColumnCount(2)
         self.summaryTable.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.summaryTable.horizontalHeader().setStretchLastSection(True)
         self.summaryTable.verticalHeader().setVisible(False)
         self.summaryTable.setEditTriggers(qt.QAbstractItemView.NoEditTriggers)
         self.summaryTable.setSelectionBehavior(qt.QAbstractItemView.SelectRows)
         self.summaryTable.setAlternatingRowColors(True)
         self.summaryTable.setMaximumHeight(140)
-        runLay.addWidget(qt.QLabel("Summary:"))
         runLay.addWidget(self.summaryTable)
 
-        # Extracted Features: EXACTLY two columns, read-only
+        # Extracted Features table
+        runLay.addWidget(qt.QLabel(UI_TEXT["lbl_extracted"] + ":"))
         self.featureTable = qt.QTableWidget()
         self.featureTable.setColumnCount(2)
         self.featureTable.setHorizontalHeaderLabels(["Feature", "Value"])
-        self.featureTable.horizontalHeader().setStretchLastSection(True)
         self.featureTable.verticalHeader().setVisible(False)
         self.featureTable.setEditTriggers(qt.QAbstractItemView.NoEditTriggers)
         self.featureTable.setSelectionBehavior(qt.QAbstractItemView.SelectRows)
         self.featureTable.setAlternatingRowColors(True)
         self.featureTable.setMinimumHeight(220)
         self.featureTable.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
-        runLay.addWidget(qt.QLabel("Extracted Features:"))
         runLay.addWidget(self.featureTable, 1)
 
         runTab.addWidget(runGroup)
 
-    def onCompute(self):
-        image_path = self.imagePathEdit.currentPath
-        mask_path = self.maskPathEdit.currentPath
+        # initial widths
+        self._apply_two_column_widths(self.summaryTable, right_width=220, left_min=380)
+        self._apply_two_column_widths(self.featureTable, right_width=170, left_min=520)
 
-        if not image_path:
-            self.statusLabel.setText("Please select an image.")
-            self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
-            logger.warning("No image selected.")
-            return
-        if not mask_path:
-            self.statusLabel.setText("Please select a mask.")
-            self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
-            logger.warning("No mask selected.")
-            return
+    def onCompute(self):
+        is_single = self.singleModeRadio.isChecked()
+
+        if is_single:
+            image_path = self.imagePathEdit.currentPath
+            mask_path = self.maskPathEdit.currentPath
+            if not image_path:
+                self.statusLabel.setText(f"Error: Select an {UI_TEXT['lbl_image'].lower()} file.")
+                self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
+                logger.warning("No image file selected.")
+                return
+            if not mask_path:
+                self.statusLabel.setText(f"Error: Select a {UI_TEXT['lbl_mask'].lower()} file.")
+                self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
+                logger.warning("No mask file selected.")
+                return
+        else:
+            image_path = self.imageFolderEdit.currentPath
+            mask_path = self.maskFolderEdit.currentPath
+            if not image_path or not os.path.isdir(image_path):
+                self.statusLabel.setText(f"Error: Select an {UI_TEXT['lbl_image_folder'].lower()}.")
+                self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
+                logger.warning("No image folder selected.")
+                return
+            if not mask_path or not os.path.isdir(mask_path):
+                self.statusLabel.setText(f"Error: Select a {UI_TEXT['lbl_mask_folder'].lower()}.")
+                self.statusLabel.setStyleSheet("color: red; font-weight: bold;")
+                logger.warning("No mask folder selected.")
+                return
 
         params = {}
         params["radiomics_destination_folder"] = self.outputDirEdit.currentPath or RDEF.get("destination_folder", "./output_result")
         params["radiomics_temporary_files_path"] = self.tmpDirEdit.currentPath or RDEF.get("temporary_files_path", "./temporary_files_path")
 
+        # categories/dimensions selections (meaningful for handcrafted)
         total = len(getattr(self, "categoryChecks", []))
         selected = [self._wtext(cb) for cb in getattr(self, "categoryChecks", []) if cb.isChecked()]
         params["radiomics_categories"] = "all" if (not selected or (total and len(selected) == total)) else ",".join(selected)
@@ -1173,54 +1342,58 @@ class PySeraWidget(ScriptedLoadableModuleWidget):
         dselected = [self._wtext(cb) for cb in getattr(self, "dimensionChecks", []) if cb.isChecked()]
         params["radiomics_dimensions"] = "all" if (not dselected or (dtotal and len(dselected) == dtotal)) else ",".join(dselected)
 
+        # gather all UI params
         for key, widget in self.param_widgets.items():
             if widget is None:
                 continue
             params[key] = self._val_from_widget(widget)
 
-        pretty = str(params.get("radiomics_extraction_mode", "handcrafted feature")).strip().lower()
+        # map Extraction Mode UI text -> canonical value
+        pretty = str(params.get("radiomics_extraction_mode", UI_TEXT["mode_hand"])).strip().lower()
         params["radiomics_extraction_mode"] = "handcrafted_feature" if "handcrafted" in pretty else "deep_feature"
 
-        self.statusLabel.setText("Computing features...")
+        mode_str = "Single Case" if is_single else "Batch (Folders)"
+        self.statusLabel.setText(f"Running ({mode_str})...")
         self.statusLabel.setStyleSheet("color: blue; font-weight: bold;")
         qt.QApplication.processEvents()
 
         try:
             t0 = time.time()
-            output_csv, result = self.logic.run_single_pair(image_path, mask_path, params)
+            if is_single:
+                output_csv, result = self.logic.run_single_case(image_path, mask_path, params)
+            else:
+                output_csv, result = self.logic.run_batch_folders(image_path, mask_path, params)
             dt = time.time() - t0
 
-            self.statusLabel.setText(f"Features saved to: {output_csv}")
-            self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
-
-            # Summary (always)
-            self.summaryTable.setRowCount(0)
-            summary_data = {
-                "output_path": output_csv,
-                "processed_files": (result.get("processed_files", "N/A") if isinstance(result, dict) else "N/A"),
-                "features_extracted": (result.get("features_extracted", "N/A") if isinstance(result, dict) else "N/A"),
-                "processing_time (s)": round(dt, 3),
-            }
-            for i, (k, v) in enumerate(summary_data.items()):
-                self.summaryTable.insertRow(i)
-                self.summaryTable.setItem(i, 0, qt.QTableWidgetItem(str(k)))
-                self.summaryTable.setItem(i, 1, qt.QTableWidgetItem(str(v)))
-
-            # Extracted Features (PRIMARY: from result['features_extracted'])
+            # Extracted Features from result (preferred)
             rows = self.logic.feature_rows_from_result(result)
             if rows:
                 self._fill_extracted_features_table(rows)
-                self.statusLabel.setText(f"Done. Features saved to: {output_csv}")
-                self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
+                extracted_count = len(rows)
+            else:
+                self._fill_extracted_features_table([["Info", "Waiting for CSV to load..."]])
+                extracted_count = 0
 
-                logger.info(f"Done. Extracted {len(rows)} features. Output: {output_csv}")
-                return
+            processed_files = "N/A"
+            if isinstance(result, dict) and "processed_files" in result:
+                processed_files = result.get("processed_files")
 
-            # Fallback: poll CSV asynchronously
-            self._fill_extracted_features_table([["Info", "Waiting for CSV to load..."]])
-            self.statusLabel.setText(f"Processing finished. Waiting for CSV: {output_csv}")
-            self.statusLabel.setStyleSheet("color: blue; font-weight: bold;")
-            self._poll_csv_until_ready(output_csv)
+            self._fill_summary_table([
+                ("input_type", mode_str),
+                ("output_csv", output_csv),
+                ("processed_files", processed_files),
+                ("features_count", extracted_count),
+                ("runtime_seconds", round(dt, 3)),
+            ])
+
+            self.statusLabel.setText(f"Done. {extracted_count} features. Output saved.")
+            self.statusLabel.setStyleSheet("color: green; font-weight: bold;")
+
+            logger.info(f"Done. InputType={mode_str}. Extracted={extracted_count}. Output={output_csv}")
+            print(f"[PySera] Done. InputType={mode_str}. Extracted={extracted_count}. Output={output_csv}")
+
+            if not rows:
+                self._poll_csv_until_ready(output_csv)
 
         except Exception as e:
             self.statusLabel.setText(f"Error: {e}")
@@ -1243,5 +1416,3 @@ class PySeraTest(ScriptedLoadableModuleTest):
         except Exception as e:
             self.delayDisplay(f"Test failed: {e}")
             logger.error(f"PySeraTest failed: {e}")
-            print(f"[PySera] TEST FAILED: {e}")
-
