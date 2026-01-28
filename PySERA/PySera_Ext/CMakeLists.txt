@@ -18,3 +18,11 @@ slicerMacroBuildScriptedModule(
   SCRIPTS ${MODULE_PYTHON_SCRIPTS}
   RESOURCES ${MODULE_PYTHON_RESOURCES}
 )
+
+# Install pysera_lib Python package
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pysera_lib
+  DESTINATION ${Slicer_INSTALL_QTSCRIPTEDMODULES_LIB_DIR}/PySera
+  PATTERN "__pycache__" EXCLUDE
+  PATTERN "*.pyc" EXCLUDE
+)

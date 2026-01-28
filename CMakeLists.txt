@@ -11,18 +11,11 @@ set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/radiuma-com/Slic
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
-# -------------------------------
-# Install shared python library
-# -------------------------------
-install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/PySera_Ext/pysera_lib
-  DESTINATION ${Slicer_INSTALL_QTSCRIPTEDMODULES_DIR}
-)
 
 # -------------------------------
 # Modules
 # -------------------------------
-add_subdirectory(PySera_Ext)
-add_subdirectory(PySeraCLI)
+add_subdirectory(PySERA/PySera_Ext)
+add_subdirectory(PySERA/PySeraCLI)
 
 include(${Slicer_EXTENSION_CPACK})
