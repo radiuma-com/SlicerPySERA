@@ -4,7 +4,8 @@
 # Packaging-safe rules:
 # - No pip-dependency imports at file level (pysera, yaml, pandas, etc.)
 # - Only install/import pip packages inside Logic at runtime
-# - Parameters loaded from: <ExtensionRoot>/pysera_lib/parameters.yaml or parameters.json
+# - Parameters loaded from: <ExtensionRoot>/PySera_Ext/pysera_lib/parameters.yaml
+# or parameters.json
 #
 # UI rules:
 # - "Extracted Features" table must show ONLY two columns: Feature | Value (read-only)
@@ -129,7 +130,7 @@ def _find_pysera_lib_dir():
     Locate pysera_lib directory.
 
     Preferred layout:
-      <ExtensionRoot>/pysera_lib/parameters.yaml|json
+      <ExtensionRoot>/PySera_Ext/pysera_lib/parameters.yaml|json
       <ExtensionRoot>/PySera_Ext/PySera.py
 
     Also supports installed layout where pysera_lib can be imported.
@@ -146,8 +147,8 @@ def _find_pysera_lib_dir():
     # Source/dev layout fallbacks
     ext_root = os.path.dirname(MODULE_DIR)  # <ExtensionRoot>
     candidates = [
-        os.path.join(ext_root, "pysera_lib"),
         os.path.join(MODULE_DIR, "pysera_lib"),
+        os.path.join(ext_root, "pysera_lib"),
         os.path.join(os.path.dirname(ext_root), "pysera_lib"),
     ]
     for d in candidates:
@@ -202,7 +203,7 @@ def load_parameters() -> dict:
             logger.info(f"Parameters loaded from {JSON_PATH}")
             return cfg
 
-        logger.warning("No parameter file found (pysera_lib/parameters.yaml or .json). Using empty defaults.")
+        logger.warning("No parameter file found (PySera_Ext/pysera_lib/parameters.yaml or .json). Using empty defaults.")
         return {}
     except Exception as e:
         logger.error(f"Failed to load parameters: {e}")

@@ -15,7 +15,7 @@ include(${Slicer_USE_FILE})
 # Install shared python library
 # -------------------------------
 install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pysera_lib
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/PySera_Ext/pysera_lib
   DESTINATION ${Slicer_INSTALL_QTSCRIPTEDMODULES_DIR}
 )
 
