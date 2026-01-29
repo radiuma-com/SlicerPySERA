@@ -49,8 +49,8 @@ It leverages the [PySERA library](https://github.com/radiuma-com/PySERA) for com
 
 ## Repository Structure
 
-- **PySera_Ext/** – Main 3D Slicer ScriptedLoadableModule (GUI). Includes vendored parameter files under `pysera_lib/`.
-- **PySeraCLI/** – Optional CLI wrapper for headless runs. Includes vendored parameter files under `pysera_cli_lib/`.
+- **PySera_Ext/** – Main 3D Slicer ScriptedLoadableModule (GUI). Includes vendored parameter files under `PySera_Ext/pysera_lib/`.
+- **PySeraCLI/** – Optional CLI wrapper for headless runs. Includes vendored parameter files under `PySeraCLI/pysera_cli_lib/`.
 - **Data/** – Example datasets for testing and development purposes.  
 - **Resources/** – All non-code assets, including GUI icons, screenshots, configuration files, and templates for reports.  
 
