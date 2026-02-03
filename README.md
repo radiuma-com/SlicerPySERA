@@ -47,17 +47,6 @@ It leverages the [PySERA library](https://github.com/radiuma-com/PySERA) for com
 
 ---
 
-## Repository Structure
-
-- **PySera_Ext/** – Main 3D Slicer ScriptedLoadableModule (GUI). Includes vendored parameter files under `PySera_Ext/pysera_lib/`.
-- **PySeraCLI/** – Optional CLI wrapper for headless runs. Includes vendored parameter files under `PySeraCLI/pysera_cli_lib/`.
-- **Data/** – Example datasets for testing and development purposes.  
-- **Resources/** – All non-code assets, including GUI icons, screenshots, configuration files, and templates for reports.  
-
-> Note: The core `pysera` library is installed into Slicer’s Python using `slicer.util.pip_install("pysera")` at runtime.
-
----
-
 ## Key Features
 
 - **Fully integrated with 3D Slicer** – no external scripts required  
@@ -71,41 +60,41 @@ It leverages the [PySERA library](https://github.com/radiuma-com/PySERA) for com
 ## Screenshots
 
 The following screenshots illustrate the **main workflows and tabs** of the SlicerPySERA module.  
-All images are located in `Resources/Screenshots/`.
+All images are located in `PySERA/Resources/Screenshots/`.
 
 <div align="center">
   <h3>Title & Feature Categories</h3>
-  <img src="Resources/Screenshots/0_screenshot_title_with_categories.png" width="800" alt="Title and feature categories">
+  <img src="PySERA/Resources/Screenshots/0_screenshot_title_with_categories.png" width="800" alt="Title and feature categories">
 </div>
 
 <div align="center">
   <h3>Input / Output Settings</h3>
-  <img src="Resources/Screenshots/1_screenshot_io.png" width="800" alt="Input and Output settings">
+  <img src="PySERA/Resources/Screenshots/1_screenshot_io.png" width="800" alt="Input and Output settings">
 </div>
 
 <div align="center">
   <h3>Handcrafted Feature Extraction Mode</h3>
-  <img src="Resources/Screenshots/2_screenshot_handcrafted_mode.png" width="800" alt="Handcrafted mode">
+  <img src="PySERA/Resources/Screenshots/2_screenshot_handcrafted_mode.png" width="800" alt="Handcrafted mode">
 </div>
 
 <div align="center">
   <h3>Deep Feature Extraction Mode</h3>
-  <img src="Resources/Screenshots/3_screenshot_deep_mode.png" width="800" alt="Deep feature mode">
+  <img src="PySERA/Resources/Screenshots/3_screenshot_deep_mode.png" width="800" alt="Deep feature mode">
 </div>
 
 <div align="center">
   <h3>Setting Parameters</h3>
-  <img src="Resources/Screenshots/4_screenshot_setting_parameters.png" width="800" alt="Setting parameters">
+  <img src="PySERA/Resources/Screenshots/4_screenshot_setting_parameters.png" width="800" alt="Setting parameters">
 </div>
 
 <div align="center">
   <h3>Feature Subset Selection</h3>
-  <img src="Resources/Screenshots/5_screenshot_subset.png" width="800" alt="Feature subset selection">
+  <img src="PySERA/Resources/Screenshots/5_screenshot_subset.png" width="800" alt="Feature subset selection">
 </div>
 
 <div align="center">
   <h3>Run & Show Results</h3>
-  <img src="Resources/Screenshots/6_screenshot_run_and_show_results.png" width="800" alt="Execution and results">
+  <img src="PySERA/Resources/Screenshots/6_screenshot_run_and_show_results.png" width="800" alt="Execution and results">
 </div>
 
 ---
@@ -147,6 +136,18 @@ All images are located in `Resources/Screenshots/`.
 
 ---
 
+# Developers
+
+## Repository Structure
+
+- **PySera_Ext/** – Main 3D Slicer ScriptedLoadableModule (GUI). Includes vendored parameter files under `PySera_Ext/pysera_lib/`.
+- **PySeraCLI/** – Optional CLI wrapper for headless runs. Includes vendored parameter files under `PySeraCLI/pysera_cli_lib/`.
+- **Data/** – Example datasets for testing and development purposes.  
+- **Resources/** – All non-code assets, including GUI icons, screenshots, configuration files, and templates for reports.  
+
+> Note: The core `pysera` library is installed into Slicer’s Python using `slicer.util.pip_install("pysera")` at runtime.
+
+---
 ## Parameters (selected)
 
 ### Common (both modes)
@@ -216,17 +217,8 @@ All images are located in `Resources/Screenshots/`.
 | Issue | Resolution |
 |--------|-------------|
 | No visible effect of report level | Ensure report level is set *before* pressing “Apply”. |
-| `'str' object is not callable` error | Occurs due to Qt bindings; fixed internally via safe access. |
 | Missing output | Verify mirrored image/mask structure and writable destination folder. |
 | DICOM RTSTRUCT memory errors | Confirm `temporary_files_path` is on a writable drive. |
-
----
-
-## Integration Notes
-
-- Implemented as a **ScriptedLoadableModule** using Qt/CTK.  
-- Parameters are grouped for **Handcrafted** and **Deep** extraction modes.  
-- Synchronization maintained between selected categories and dimensions.
 
 ---
 
@@ -239,24 +231,12 @@ v1
 ```
 
 ---
-
 ## Contact
 
 For general inquiries or academic collaboration:
 
 **Dr. Mohammad R. Salmanpour (Team Lead)**  
 📧 msalman@bccrc.ca · m.salmanpoor66@gmail.com · m.salmanpour@ubc.ca  
-
----
-
-## Maintenance
-
-For technical support and maintenance inquiries:
-
-**Dr. Mohammad R. Salmanpour (Team Lead)**  
-msalman@bccrc.ca · m.salmanpoor66@gmail.com · m.salmanpour@ubc.ca
-
-**Sirwan Barichin**  
 
 ---
 
