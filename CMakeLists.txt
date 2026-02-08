@@ -11,11 +11,9 @@ set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/radiuma-com/Slic
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
-
 # -------------------------------
 # Modules
 # -------------------------------
-add_subdirectory(PySERA/PySera_Ext)
-add_subdirectory(PySERA/PySeraCLI)
+add_subdirectory(PySERA)
 
 include(${Slicer_EXTENSION_CPACK})
