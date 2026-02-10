@@ -1,6 +1,7 @@
 # SlicerPySERA — PySERA Radiomics Extension for 3D Slicer
 
 [![3D Slicer Extension](https://img.shields.io/badge/3D%20Slicer-Extension-blue)](https://github.com/topics/3d-slicer-extension)
+[![3D Slicer Version](https://img.shields.io/badge/3D%20Slicer-5.9%2B-orange)](https://www.slicer.org/)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-stable-green.svg)](#version-history)
