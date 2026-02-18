@@ -1,0 +1,178 @@
+{
+  "BinSize": {
+    "value": 25,
+    "type": "int",
+    "description": "Bin size for intensity discretization"
+  },
+  "isGLround": {
+    "value": 0,
+    "type": "bool",
+    "description": "Round gray-level values before discretization"
+  },
+  "DiscType": {
+    "value": "FBS",
+    "type": "str",
+    "choices": [
+      "FBS",
+      "FBN",
+      "Lloyd-Max",
+      "Equal"
+    ],
+    "description": "Discretization method"
+  },
+  "qntz": {
+    "value": "Uniform",
+    "type": "str",
+    "choices": [
+      "Uniform",
+      "Lloyd-Max",
+      "Other"
+    ],
+    "description": "Quantization type"
+  },
+  "isotVoxSize": {
+    "value": 2,
+    "type": "float",
+    "description": "Isotropic voxel size (3D)"
+  },
+  "isotVoxSize2D": {
+    "value": 2,
+    "type": "float",
+    "description": "Isotropic voxel size (2D slice-based)"
+  },
+  "VoxInterp": {
+    "value": "Nearest",
+    "type": "str",
+    "choices": [
+      "Nearest",
+      "Linear",
+      "Cubic"
+    ],
+    "description": "Interpolation method for voxel resampling"
+  },
+  "ROIInterp": {
+    "value": "Nearest",
+    "type": "str",
+    "choices": [
+      "Nearest",
+      "Linear"
+    ],
+    "description": "Interpolation method for ROI resampling"
+  },
+  "DataType": {
+    "value": "OTHER",
+    "type": "str",
+    "choices": [
+      "CT",
+      "MR",
+      "PET",
+      "OTHER"
+    ],
+    "description": "Imaging modality type"
+  },
+  "isScale": {
+    "value": 0,
+    "type": "bool",
+    "description": "Enable intensity scaling"
+  },
+  "isReSegRng": {
+    "value": 0,
+    "type": "bool",
+    "description": "Enable re-segmentation range"
+  },
+  "ReSegIntrvl01": {
+    "value": -1000,
+    "type": "int",
+    "description": "Lower bound of re-segmentation interval"
+  },
+  "ReSegIntrvl02": {
+    "value": 400,
+    "type": "int",
+    "description": "Upper bound of re-segmentation interval"
+  },
+  "isOutliers": {
+    "value": 0,
+    "type": "bool",
+    "description": "Remove statistical outliers in ROI"
+  },
+  "ROI_PV": {
+    "value": 0.5,
+    "type": "float",
+    "description": "Partial volume inclusion threshold"
+  },
+  "isQuntzStat": {
+    "value": 1,
+    "type": "bool",
+    "description": "Compute statistics on quantized images"
+  },
+  "isIsot2D": {
+    "value": 0,
+    "type": "bool",
+    "description": "Perform 2D isotropic resampling"
+  },
+  "IVH_Type": {
+    "value": 3,
+    "type": "int",
+    "description": "Type of IVH analysis"
+  },
+  "IVH_DiscCont": {
+    "value": 1,
+    "type": "int",
+    "description": "IVH discretization continuity"
+  },
+  "IVH_binSize": {
+    "value": 2.0,
+    "type": "float",
+    "description": "Bin size for IVH calculation"
+  },
+  "ROI_num": {
+    "value": 10,
+    "type": "int",
+    "description": "Number of ROIs to process"
+  },
+  "ROI_selection_mode": {
+    "value": "per_Img",
+    "type": "str",
+    "choices": [
+      "per_Img",
+      "per_Series",
+      "manual"
+    ],
+    "description": "ROI selection mode"
+  },
+  "isROIsCombined": {
+    "value": 0,
+    "type": "bool",
+    "description": "Combine multiple ROIs"
+  },
+  "Feats2out": {
+    "value": 8,
+    "type": "int",
+    "description": "Number of features to output"
+  },
+  "feature_value_mode": {
+    "value": "REAL_VALUE",
+    "type": "str",
+    "choices": [
+      "REAL_VALUE",
+      "APPROXIMATE_VALUE",
+      "Z_SCORE",
+      "NORMALIZED"
+    ],
+    "description": "Output mode for feature values"
+  },
+  "destfolder": {
+    "value": "./output_optimized",
+    "type": "str",
+    "description": "Destination folder for extracted features"
+  },
+  "VoxelSizeInfo": {
+    "value": [
+      0.9769999980926514,
+      0.9769999980926514,
+      3.0
+    ],
+    "type": "list",
+    "description": "Voxel spacing (X, Y, Z)"
+  }
+}

@@ -1,0 +1,284 @@
+# =========================================================
+# YAML for SlicerPySera — defaults + rich metadata + CLI map
+# =========================================================
+
+# -------------------------------
+# 1) Flat defaults used by code
+# -------------------------------
+radiomics:
+  # From your latest DEFAULT_RADIOICS_PARAMS
+  DataType: "CT"
+  DiscType: "FBS"
+  BinSize: 1
+  isScale: 0
+  VoxInterp: null         # allow None
+  ROIInterp: null         # allow None
+  isotVoxSize: 2
+  isotVoxSize2D: 2
+  isIsot2D: 0
+  isGLround: 0
+  isReSegRng: 0
+  isOutliers: 0
+  isQuntzStat: 0
+  ReSegIntrvl01: null
+  ReSegIntrvl02: null
+  ROI_PV: 0.0
+  qntz: "Uniform"
+  IVH_Type: 0
+  IVH_DiscCont: 0
+  IVH_binSize: 0
+  roi_num: 1
+  roi_selection_mode: "per_Img"
+  feature_value_mode: "REAL_VALUE"
+  isROIsCombined: 0
+
+  # New/extended UI fields
+  categories: "all"       # "diag","morph","ip","stat","ih","ivh","glcm","glrlm","glszm","gldzm","ngtdm","ngldm","mi" or "all"
+  dimensions: "all"       # "all" | "1st" | "2D" | "2_5D" | "3D"
+
+  # IO / execution
+  destination_folder: "./output_result"
+  temporary_files_path: "./temporary_files_path"
+  report: "all"                 # none|error|warning|info|all
+  min_roi_volume: 10
+  apply_preprocessing: false
+  enable_parallelism: true
+  num_workers: "auto"          # "auto" or integer
+
+  # Optional advanced (kept for completeness; not changed)
+  extraction_mode: "handcrafted_feature"
+  deep_learning_model: "resnet50"
+  aggregation_lesion: 0
+  optional_params: ""
+
+# ---------------------------------------
+# 2) Rich metadata (docs + UI hints)
+# ---------------------------------------
+radiomics_meta:
+
+  # Quantization & Discretization
+  BinSize:
+    value: 1
+    type: int
+    description: "Bin size for intensity discretization"
+  isGLround:
+    value: 0
+    type: bool
+    description: "Round gray-level values before discretization"
+  DiscType:
+    value: "FBS"
+    type: str
+    choices: ["FBS", "FBN", "Lloyd-Max", "Equal"]
+    description: "Discretization method"
+  qntz:
+    value: "Uniform"
+    type: str
+    choices: ["Uniform", "Lloyd-Max", "Other"]
+    description: "Quantization type"
+
+  # Voxel size & interpolation
+  isotVoxSize:
+    value: 2
+    type: float
+    description: "Isotropic voxel size (3D)"
+  isotVoxSize2D:
+    value: 2
+    type: float
+    description: "Isotropic voxel size (2D slice-based)"
+  VoxInterp:
+    value: null
+    type: str
+    choices: ["Nearest", "linear", "bilinear", "trilinear", "spline", "bspline", "tricubic-spline", "cubic", "None"]
+    description: "Interpolation method for voxel resampling"
+  ROIInterp:
+    value: null
+    type: str
+    choices: ["Nearest", "linear", "bilinear", "trilinear", "spline", "bspline", "tricubic-spline", "cubic", "None"]
+    description: "Interpolation method for ROI resampling"
+
+  # Data type & scaling
+  DataType:
+    value: "CT"
+    type: str
+    choices: ["CT", "MR", "PET", "OTHER"]
+    description: "Imaging modality type"
+  isScale:
+    value: 0
+    type: bool
+    description: "Enable intensity scaling"
+
+  # ROI preprocessing
+  isReSegRng:
+    value: 0
+    type: bool
+    description: "Enable re-segmentation range"
+  ReSegIntrvl01:
+    value: null
+    type: int
+    description: "Lower bound of re-segmentation interval"
+  ReSegIntrvl02:
+    value: null
+    type: int
+    description: "Upper bound of re-segmentation interval"
+  isOutliers:
+    value: 0
+    type: bool
+    description: "Remove statistical outliers in ROI"
+  ROI_PV:
+    value: 0.0
+    type: float
+    description: "Partial volume inclusion threshold"
+
+  # Quantization statistics
+  isQuntzStat:
+    value: 0
+    type: bool
+    description: "Compute statistics on quantized images"
+
+  # 2D analysis
+  isIsot2D:
+    value: 0
+    type: bool
+    description: "Perform 2D isotropic resampling"
+
+  # IVH params
+  IVH_Type:
+    value: 0
+    type: int
+    description: "Type of IVH analysis"
+  IVH_DiscCont:
+    value: 0
+    type: int
+    description: "IVH discretization continuity"
+  IVH_binSize:
+    value: 0
+    type: float
+    description: "Bin size for IVH calculation"
+
+  # ROI management
+  roi_num:
+    value: 1
+    type: int
+    description: "Number of ROIs to process"
+  roi_selection_mode:
+    value: "per_Img"
+    type: str
+    choices: ["per_Img", "per_region", "manual"]
+    description: "ROI selection mode"
+  isROIsCombined:
+    value: 0
+    type: bool
+    description: "Combine multiple ROIs"
+
+  # Feature output
+  feature_value_mode:
+    value: "REAL_VALUE"
+    type: str
+    choices: ["REAL_VALUE", "APPROXIMATE_VALUE", "Z_SCORE", "NORMALIZED"]
+    description: "Output mode for feature values"
+
+  # Dimensions & Categories
+  dimensions:
+    value: "all"
+    type: str
+    choices: ["all", "1st", "2D", "2_5D", "3D"]
+    description: "Analysis dimensionality (use 'all' for backend default)"
+  categories:
+    value: "all"
+    type: str
+    # UI will present a multi-select; backend accepts comma list or 'all'
+    choices: ["diag","morph","ip","stat","ih","ivh","glcm","glrlm","glszm","gldzm","ngtdm","ngldm","mi"]
+    description: "Feature category filter ('all' or comma-separated list)"
+
+  # Output & meta
+  destination_folder:
+    value: "./output_result"
+    type: str
+    description: "Destination folder for extracted features"
+  temporary_files_path:
+    value: "./temporary_files_path"
+    type: str
+    description: "Temporary working directory"
+  report:
+    value: "all"
+    type: str
+    choices: ["none","error","warning","info","all"]
+    description: "Logging/reporting verbosity"
+  min_roi_volume:
+    value: 10
+    type: float
+    description: "Minimum ROI volume to process (units: voxels or mm³, per backend)"
+  apply_preprocessing:
+    value: false
+    type: bool
+    description: "Apply preprocessing pipeline"
+  enable_parallelism:
+    value: true
+    type: bool
+    description: "Enable multiprocessing where available"
+  num_workers:
+    value: "auto"
+    type: str
+    description: "\"auto\" or an integer worker count"
+
+  # Advanced (optional)
+  extraction_mode:
+    value: "handcrafted_feature"
+    type: str
+    choices: ["handcrafted_feature","deep_feature"]
+    description: "Feature extraction engine"
+  deep_learning_model:
+    value: "resnet50"
+    type: str
+    choices: ["resnet50","vgg16","densenet121"]
+    description: "Backbone used when extraction_mode=deep_feature"
+  aggregation_lesion:
+    value: 0
+    type: bool
+    description: "Aggregate per lesion"
+  optional_params:
+    value: ""
+    type: str
+    description: "Free-form extras (e.g., \"k=v; k2=v2\")"
+
+# ------------------------------------------
+# 3) Mapping from radiomics_* → pysera CLI
+# ------------------------------------------
+cli_key_map:
+  radiomics_temporary_files_path: temporary_files_path
+  radiomics_apply_preprocessing: apply_preprocessing
+  radiomics_min_roi_volume: min_roi_volume
+  radiomics_num_workers: num_workers
+  radiomics_enable_parallelism: enable_parallelism
+  radiomics_categories: categories
+  radiomics_dimensions: dimensions
+  radiomics_report: report
+  radiomics_extraction_mode: extraction_mode
+  radiomics_deep_learning_model: deep_learning_model
+  radiomics_aggregation_lesion: aggregation_lesion
+  radiomics_optional_params: optional_params
+
+  radiomics_BinSize: bin_size
+  radiomics_roi_num: roi_num
+  radiomics_roi_selection_mode: roi_selection_mode
+  radiomics_feature_value_mode: feature_value_mode
+  radiomics_DataType: data_type
+  radiomics_DiscType: disc_type
+  radiomics_VoxInterp: vox_interp
+  radiomics_ROIInterp: roi_interp
+  radiomics_isScale: is_scale
+  radiomics_isotVoxSize: isot_vox_size
+  radiomics_isotVoxSize2D: isot_vox_size_2d
+  radiomics_isIsot2D: is_isot_2d
+  radiomics_isGLround: is_glround
+  radiomics_isReSegRng: is_reseg_rng
+  radiomics_isOutliers: is_outliers
+  radiomics_isQuntzStat: is_quntz_stat
+  radiomics_ReSegIntrvl01: reseg_intrvl01
+  radiomics_ReSegIntrvl02: reseg_intrvl02
+  radiomics_ROI_PV: roi_pv
+  radiomics_qntz: qntz
+  radiomics_IVH_Type: ivh_type
+  radiomics_IVH_DiscCont: ivh_disc_cont
+  radiomics_IVH_binSize: ivh_bin_size
+  radiomics_isROIsCombined: is_rois_combined
