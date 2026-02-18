@@ -1,0 +1,29 @@
+# Normalize text files to LF across platforms (recommended for CI / Linux builders)
+* text=auto eol=lf
+
+# Keep Windows scripts with CRLF when needed
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Treat common binary assets as binary (no line-ending conversions)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.tif binary
+*.tiff binary
+*.bmp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.gz binary
+
+# Medical imaging formats (avoid corruption)
+*.nii binary
+*.nii.gz binary
+*.nrrd binary
+*.mha binary
+*.mhd binary
+*.dcm binary
