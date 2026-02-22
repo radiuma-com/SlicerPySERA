@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# PySERA ScriptedLoadableModule for 3D Slicer
+# PySERA ScriptedLoadableModule for 3D Slicer.
 
 # Packaging-safe rules:
 # - No pip-dependency imports at file level (pysera, yaml, pandas, etc.)
